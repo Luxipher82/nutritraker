@@ -1,1496 +1,309 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NutriTracker Web</title>
-    <!-- Libreria SheetJS per leggere file Excel (.xlsx) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <style>
-        :root {
-            --primary: #ec4899;
-            --primary-hover: #db2777;
-            --bg-color: #fdf2f8;
-            --card-bg: #ffffff;
-            --text: #1e293b;
-            --text-muted: #64748b;
-            --border: #fbcfe8;
-            --success: #10b981;
-            --danger: #ef4444;
-            --radius: 12px;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestione Cibo & Nutrizione</title>
+  
+  <!-- Libreria SheetJS per leggere i file Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
-        body.theme-male {
-            --primary: #0284c7;
-            --primary-hover: #0369a1;
-            --bg-color: #f0f9ff;
-            --border: #bae6fd;
-        }
+  <style>
+    :root {
+      --primary-color: #2e7d32;
+      --bg-color: #f4f6f8;
+      --card-bg: #ffffff;
+      --text-color: #333333;
+    }
 
-        html, body {
-            overscroll-behavior-y: contain;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text);
-            margin: 0;
-            padding: 8px;
-            display: flex;
-            justify-content: center;
-        }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 16px;
+    }
 
-        .container {
-            width: 100%;
-            max-width: 680px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
 
-        .card {
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            padding: 12px 14px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border: 1px solid var(--border);
-        }
+    .card {
+      background: var(--card-bg);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
 
-        h2, h3, h4 {
-            margin: 0;
-            color: var(--text);
-            font-size: 1.05rem;
-        }
+    h2 {
+      margin-top: 0;
+      color: var(--primary-color);
+      font-size: 1.2rem;
+    }
 
-        .form-group {
-            margin-bottom: 8px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            position: relative;
-        }
+    .file-input-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
 
-        label {
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--text-muted);
-        }
+    input[type="file"], input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-sizing: border-box;
+      font-size: 1rem;
+    }
 
-        input, select, button {
-            padding: 8px 10px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            font-size: 0.88rem;
-            outline: none;
-            box-sizing: border-box;
-            width: 100%;
-        }
+    button {
+      background-color: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 1rem;
+    }
 
-        input:focus, select:focus {
-            border-color: var(--primary);
-        }
+    button:hover {
+      opacity: 0.9;
+    }
 
-        .autocomplete-results {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            right: 0;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            max-height: 180px;
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.12);
-            display: none;
-        }
+    .status-message {
+      margin-top: 8px;
+      font-size: 0.9rem;
+      font-weight: bold;
+    }
 
-        .autocomplete-item {
-            padding: 8px 10px;
-            cursor: pointer;
-            border-bottom: 1px solid var(--bg-color);
-            font-size: 0.85rem;
-        }
+    .food-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
 
-        .autocomplete-item:hover {
-            background-color: var(--bg-color);
-            color: var(--primary);
-        }
+    .food-item {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
+    .food-item:last-child {
+      border-bottom: none;
+    }
 
-        button:hover {
-            background-color: var(--primary-hover);
-        }
+    .food-info {
+      display: flex;
+      flex-direction: column;
+    }
 
-        .btn-secondary {
-            background-color: var(--bg-color);
-            color: var(--text);
-            border: 1px solid var(--border);
-        }
+    .food-title {
+      font-weight: bold;
+      font-size: 1rem;
+    }
 
-        .btn-danger {
-            background-color: var(--danger);
-            color: white;
-            padding: 4px 8px;
-            font-size: 0.75rem;
-            border-radius: 6px;
-        }
+    .food-brand {
+      font-size: 0.85rem;
+      color: #666;
+      text-transform: uppercase;
+    }
 
-        .row {
-            display: flex;
-            gap: 8px;
-        }
-
-        .row > * {
-            flex: 1;
-        }
-
-        .icon-nav-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            border-radius: var(--radius);
-            padding: 6px 10px;
-        }
-
-        .icon-nav-bar h2 {
-            font-size: 1.1rem;
-            color: var(--primary);
-        }
-
-        .icon-btn-group {
-            display: flex;
-            gap: 6px;
-        }
-
-        .icon-btn {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background: var(--bg-color);
-            color: var(--text);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 4px 8px;
-            font-size: 0.7rem;
-            cursor: pointer;
-            min-width: 48px;
-        }
-
-        .icon-btn span.icon {
-            font-size: 1.1rem;
-            line-height: 1;
-        }
-
-        .meal-card {
-            background: #ffffff;
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 8px;
-        }
-
-        .meal-card h4 {
-            color: var(--primary);
-            margin-bottom: 6px;
-        }
-
-        .meal-items {
-            list-style: none;
-            padding-left: 0;
-            margin: 6px 0 0 0;
-            font-size: 0.82rem;
-        }
-
-        .meal-items li {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 4px 0;
-            border-bottom: 1px dashed var(--border);
-        }
-
-        .meal-items li:last-child {
-            border-bottom: none;
-        }
-
-        .water-box {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: var(--bg-color);
-            border: 1px solid var(--border);
-            padding: 8px 12px;
-            border-radius: 10px;
-        }
-
-        .water-btn-group {
-            display: flex;
-            gap: 6px;
-            align-items: center;
-        }
-
-        .water-btn-group button {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            padding: 0;
-            font-weight: bold;
-            font-size: 1rem;
-        }
-
-        .drawer-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.4);
-            z-index: 2000;
-            display: none;
-            justify-content: flex-end;
-        }
-
-        .drawer-content {
-            background: white;
-            width: 100%;
-            max-width: 480px;
-            height: 100%;
-            box-sizing: border-box;
-            padding: 16px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            box-shadow: -4px 0 15px rgba(0,0,0,0.1);
-            animation: slideIn 0.2s ease-out;
-        }
-
-        @keyframes slideIn {
-            from { transform: translateX(100%); }
-            to { transform: translateX(0); }
-        }
-
-        .drawer-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 8px;
-        }
-
-        .close-btn {
-            background: #f1f5f9;
-            color: var(--text);
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-        }
-
-        .history-item {
-            padding: 10px 0;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.82rem;
-        }
-
-        .history-header {
-            display: flex;
-            justify-content: space-between;
-            font-weight: 600;
-            margin-bottom: 4px;
-        }
-
-        .history-tag {
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.72rem;
-        }
-
-        .tag-good { background: #d1fae5; color: #065f46; }
-        .tag-neutral { background: #f3f4f6; color: #374151; }
-
-        .feedback-box {
-            background-color: var(--bg-color);
-            border-left: 3px solid var(--primary);
-            padding: 8px 10px;
-            border-radius: 4px;
-            margin-top: 6px;
-            font-size: 0.78rem;
-            line-height: 1.35;
-        }
-
-        canvas {
-            width: 100%;
-            height: 160px;
-            background: #FAF5FF;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-    </style>
+    .food-macros {
+      font-size: 0.85rem;
+      color: #444;
+      margin-top: 4px;
+    }
+  </style>
 </head>
-<body class="theme-female">
+<body>
 
 <div class="container">
 
-    <!-- NAV BAR ICONE -->
-    <div class="icon-nav-bar">
-        <h2>NutriTracker</h2>
-        <div class="icon-btn-group">
-            <button class="icon-btn" onclick="toggleDrawer('profileDrawer')" title="Profilo">
-                <span class="icon">👤</span>
-                <span>Profilo</span>
-            </button>
-            <button class="icon-btn" onclick="toggleDrawer('addFoodDrawer')" title="Cibo / Excel">
-                <span class="icon">➕</span>
-                <span>Cibo</span>
-            </button>
-            <button class="icon-btn" onclick="toggleDrawer('recipesDrawer')" title="Pasti Salvati">
-                <span class="icon">🍲</span>
-                <span>Pasti</span>
-            </button>
-            <button class="icon-btn" onclick="toggleDrawer('historyDrawer')" title="Storico">
-                <span class="icon">📋</span>
-                <span>Storico</span>
-            </button>
-        </div>
+  <!-- SEZIONE IMPORTAZIONE EXCEL -->
+  <div class="card">
+    <h2>➕ Carica da Tabella Excel</h2>
+    <div class="file-input-wrapper">
+      <input type="file" id="excelFileInput" accept=".xlsx, .xls">
+      <button onclick="importaExcel()">Importa Foglio Excel</button>
     </div>
+    <div id="statusMessage" class="status-message"></div>
+  </div>
 
-    <!-- TARGET & AVVISI -->
-    <div class="card" style="padding: 10px 12px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="font-size: 0.88rem; font-weight: 600;">Target Calorico:</span>
-            <span id="targetResultMain" style="font-size: 1.05rem; font-weight: bold; color: var(--primary);">1850 kcal</span>
-        </div>
-        <div id="weightReminderBanner" style="display:none; background:#fffbebfb; border:1px solid #fef3c7; color:#b45309; padding:6px 10px; border-radius:6px; font-size:0.78rem; margin-top:6px;">
-            ⚖️ <strong>Promemoria Pesata:</strong> Sono trascorsi più di 14 giorni dall'ultima pesata. Aggiorna il peso nel Profilo!
-        </div>
-    </div>
+  <!-- SEZIONE RICERCA CIBO -->
+  <div class="card">
+    <h2>🔍 Ricerca Alimento</h2>
+    <input type="text" id="searchInput" placeholder="Es. yogurt, bresaola, primia..." oninput="gestisciRicerca()">
+  </div>
 
-    <!-- IDRATAZIONE ACQUA -->
-    <div class="card">
-        <div class="water-box">
-            <div>
-                <h4 style="margin: 0; font-size: 0.9rem;">💧 Idratazione</h4>
-                <div id="waterLabelText" style="font-size: 0.75rem; color: var(--text-muted);">
-                    Oggi ti sei idratata/o abbastanza?
-                </div>
-            </div>
-            <div class="water-btn-group">
-                <button class="btn-secondary" onclick="addWater(-250)">-</button>
-                <span id="waterCurrentDisplay" style="font-weight: bold; font-size: 0.85rem; min-width: 60px; text-align: center;">0 / 2000 ml</span>
-                <button onclick="addWater(250)">+</button>
-            </div>
-        </div>
-    </div>
+  <!-- RISULTATI RICERCA -->
+  <div class="card">
+    <ul id="foodList" class="food-list">
+      <li style="color: #777;">Carica un file Excel o inizia a digitare per cercare...</li>
+    </ul>
+  </div>
 
-    <!-- DIARIO ALIMENTARE -->
-    <div class="card">
-        <h3>Diario Alimentare di Oggi</h3>
-
-        <!-- ☕ COLAZIONE -->
-        <div class="meal-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <h4>☕ Colazione</h4>
-                <button class="btn-secondary" onclick="openRecipeSelector('Colazione')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
-            </div>
-            <div class="row">
-                <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Colazione" placeholder="Cerca cibo..." oninput="searchFood('Colazione')" autocomplete="off">
-                    <div id="searchResults-Colazione" class="autocomplete-results"></div>
-                </div>
-                <input type="number" id="foodGrams-Colazione" placeholder="g" style="flex: 1;">
-                <button onclick="addFoodToMeal('Colazione')" style="flex: 0.8;">+ Add</button>
-            </div>
-            <ul id="list-Colazione" class="meal-items"></ul>
-        </div>
-
-        <!-- 🥗 PRANZO -->
-        <div class="meal-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <h4>🥗 Pranzo</h4>
-                <button class="btn-secondary" onclick="openRecipeSelector('Pranzo')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
-            </div>
-            <div class="row">
-                <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Pranzo" placeholder="Cerca cibo..." oninput="searchFood('Pranzo')" autocomplete="off">
-                    <div id="searchResults-Pranzo" class="autocomplete-results"></div>
-                </div>
-                <input type="number" id="foodGrams-Pranzo" placeholder="g" style="flex: 1;">
-                <button onclick="addFoodToMeal('Pranzo')" style="flex: 0.8;">+ Add</button>
-            </div>
-            <ul id="list-Pranzo" class="meal-items"></ul>
-        </div>
-
-        <!-- 🍽️ CENA -->
-        <div class="meal-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <h4>🍽️ Cena</h4>
-                <button class="btn-secondary" onclick="openRecipeSelector('Cena')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
-            </div>
-            <div class="row">
-                <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Cena" placeholder="Cerca cibo..." oninput="searchFood('Cena')" autocomplete="off">
-                    <div id="searchResults-Cena" class="autocomplete-results"></div>
-                </div>
-                <input type="number" id="foodGrams-Cena" placeholder="g" style="flex: 1;">
-                <button onclick="addFoodToMeal('Cena')" style="flex: 0.8;">+ Add</button>
-            </div>
-            <ul id="list-Cena" class="meal-items"></ul>
-        </div>
-
-        <!-- 🍎 SPUNTINO -->
-        <div class="meal-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                <h4>🍎 Spuntino / Snack</h4>
-                <button class="btn-secondary" onclick="openRecipeSelector('Snack')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
-            </div>
-            <div class="row">
-                <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Snack" placeholder="Cerca cibo..." oninput="searchFood('Snack')" autocomplete="off">
-                    <div id="searchResults-Snack" class="autocomplete-results"></div>
-                </div>
-                <input type="number" id="foodGrams-Snack" placeholder="g" style="flex: 1;">
-                <button onclick="addFoodToMeal('Snack')" style="flex: 0.8;">+ Add</button>
-            </div>
-            <ul id="list-Snack" class="meal-items"></ul>
-        </div>
-
-        <div id="totals" style="font-size: 0.82rem; font-weight: 600; margin-top: 8px; background: #fff; padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
-            Totale Giornata: 0 kcal | P: 0g | G: 0g | C: 0g
-        </div>
-
-        <hr style="margin: 12px 0; border: 0; border-top: 1px solid var(--border);">
-
-        <!-- ATTIVITÀ FISICHE MULTIPLE -->
-        <h4>🏃‍♂️ Attività Fisiche di Oggi</h4>
-        <div class="row" style="margin-top: 6px;">
-            <select id="dailyActivitySelect" style="flex: 1.5;">
-                <option value="tapis_light" data-met="3.5">Tapis leggero</option>
-                <option value="tapis_intense" data-met="8.0">Corsa / Tapis intenso</option>
-                <option value="walk" data-met="3.8">Passeggiata</option>
-                <option value="muscle" data-met="5.0">Esercizio muscolare</option>
-            </select>
-            <input type="number" id="activityDurationInput" placeholder="Minuti" style="flex: 1;">
-            <button onclick="addActivityToToday()" style="flex: 0.8;">+ Aggiungi</button>
-        </div>
-
-        <ul id="todayActivitiesList" class="meal-items" style="margin-top: 6px;"></ul>
-
-        <div id="activityBurnEstimate" style="font-size: 0.8rem; font-weight: 600; color: var(--primary); margin: 6px 0 10px 0;">
-            Totale Bruciato Oggi: 0 kcal
-        </div>
-
-        <button onclick="saveDay()" style="width: 100%; background-color: var(--success); padding: 10px; font-size: 0.92rem;">Salva Giornata nello Storico</button>
-    </div>
-
-</div>
-
-<!-- DRAWER 1: PROFILO & DEFICIT & PESO -->
-<div id="profileDrawer" class="drawer-overlay" onclick="closeDrawerOnBg(event, 'profileDrawer')">
-    <div class="drawer-content">
-        <div class="drawer-header">
-            <h3>👤 Dati Profilo & Grafico Peso</h3>
-            <button class="close-btn" onclick="toggleDrawer('profileDrawer')">✕</button>
-        </div>
-
-        <div class="row">
-            <div class="form-group">
-                <label for="sexSelect">Sesso</label>
-                <select id="sexSelect" onchange="switchProfile()">
-                    <option value="F" selected>Donna 👩</option>
-                    <option value="M">Uomo 👨</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="age">Età</label>
-                <input type="number" id="age" value="30" oninput="calculateTDEE()">
-            </div>
-        </div>
-
-        <div class="row">
-            <div class="form-group">
-                <label for="height">Altezza (cm)</label>
-                <input type="number" id="height" value="165" oninput="calculateTDEE()">
-            </div>
-            <div class="form-group">
-                <label for="activity">Attività Fisica Generale</label>
-                <select id="activity" onchange="calculateTDEE()">
-                    <option value="1.2">Sedentaria</option>
-                    <option value="1.375">Leggera</option>
-                    <option value="1.55" selected>Moderata</option>
-                    <option value="1.725">Intensa</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label for="deficitSelect">Obiettivo Calorio (Deficit Limitato)</label>
-            <select id="deficitSelect" onchange="calculateTDEE()">
-                <option value="0">Mantenimento (0%)</option>
-                <option value="10" selected>Deficit Leggero (-10%)</option>
-                <option value="15">Deficit Moderato (-15%)</option>
-                <option value="20">Deficit Massimo (-20%)</option>
-            </select>
-        </div>
-
-        <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--border);">
-
-        <h4>⚖️ Pesata Bisettimanale & Andamento</h4>
-        <div class="row" style="align-items: flex-end;">
-            <div class="form-group" style="flex: 1.2;">
-                <label for="currentWeightInput">Peso Rilevato (kg)</label>
-                <input type="number" id="currentWeightInput" placeholder="Es. 60.5" step="0.1">
-            </div>
-            <button onclick="addWeightRecord()" style="flex: 1; margin-bottom: 8px; padding: 8px;">Registra Pesata</button>
-        </div>
-
-        <div>
-            <label>Grafico Andamento Peso:</label>
-            <canvas id="weightChart"></canvas>
-        </div>
-
-        <button onclick="resetCurrentProfileData()" class="btn-danger" style="margin-top: 10px; width: 100%; padding: 8px;">🗑️ Azzera Dati e Pesate di questo Profilo</button>
-    </div>
-</div>
-
-<!-- DRAWER 2: CIBO & EXCEL & BACKUP -->
-<div id="addFoodDrawer" class="drawer-overlay" onclick="closeDrawerOnBg(event, 'addFoodDrawer')">
-    <div class="drawer-content">
-        <div class="drawer-header">
-            <h3>➕ Gestione Alimenti & Database</h3>
-            <button class="close-btn" onclick="toggleDrawer('addFoodDrawer')">✕</button>
-        </div>
-
-        <div style="background: var(--bg-color); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
-            <h4 style="margin-bottom: 4px; color: var(--primary);">📂 Carica da Tabella Excel</h4>
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">Seleziona il tuo file .xlsx per aggiornare il database.</p>
-            <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="font-size: 0.8rem;">
-            <button onclick="importExcelDatabase()" class="btn-secondary" style="width: 100%; margin-top: 6px; padding: 6px; font-size: 0.8rem;">Importa Foglio Excel</button>
-        </div>
-
-        <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
-        
-        <h4>Aggiungi Singolo Alimento (100g)</h4>
-        <div class="form-group">
-            <label for="newFoodName">Nome Alimento</label>
-            <input type="text" id="newFoodName" placeholder="Es. Gorgonzola, Fettina Manzo...">
-        </div>
-        <div class="row">
-            <div class="form-group">
-                <label for="newFoodKcal">Kcal</label>
-                <input type="number" id="newFoodKcal" placeholder="350">
-            </div>
-            <div class="form-group">
-                <label for="newFoodP">Proteine (g)</label>
-                <input type="number" id="newFoodP" step="0.1" placeholder="18">
-            </div>
-        </div>
-        <div class="row">
-            <div class="form-group">
-                <label for="newFoodG">Grassi (g)</label>
-                <input type="number" id="newFoodG" step="0.1" placeholder="28">
-            </div>
-            <div class="form-group">
-                <label for="newFoodC">Carboidrati (g)</label>
-                <input type="number" id="newFoodC" step="0.1" placeholder="0.5">
-            </div>
-        </div>
-        <button onclick="addNewFoodToDatabase()" style="width: 100%; margin-top: 6px; padding: 8px;">Salva Alimento</button>
-
-        <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
-
-        <h4>📥 Backup & Ripristino</h4>
-        <div class="row">
-            <button class="btn-secondary" onclick="exportBackup()">📥 Scarica Backup</button>
-            <button class="btn-secondary" onclick="document.getElementById('importBackupInput').click()">📤 Carica Backup</button>
-            <input type="file" id="importBackupInput" accept=".json" style="display:none" onchange="importBackup(event)">
-        </div>
-    </div>
-</div>
-
-<!-- DRAWER 3: PASTI SALVATI -->
-<div id="recipesDrawer" class="drawer-overlay" onclick="closeDrawerOnBg(event, 'recipesDrawer')">
-    <div class="drawer-content">
-        <div class="drawer-header">
-            <h3>🍲 I Miei Pasti Salvati</h3>
-            <button class="close-btn" onclick="toggleDrawer('recipesDrawer')">✕</button>
-        </div>
-
-        <div style="background: var(--bg-color); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
-            <h4 style="margin-bottom: 6px; color: var(--primary);">Crea Nuovo Pasto Salvato</h4>
-            <div class="form-group">
-                <label for="recipeNameInput">Nome Pasto</label>
-                <input type="text" id="recipeNameInput" placeholder="Es. Colazione Tipo">
-            </div>
-
-            <div id="recipeIngredientsList" style="margin: 6px 0;"></div>
-
-            <div class="row">
-                <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Recipe" placeholder="Cerca ingrediente..." oninput="searchFood('Recipe')" autocomplete="off">
-                    <div id="searchResults-Recipe" class="autocomplete-results"></div>
-                </div>
-                <input type="number" id="foodGrams-Recipe" placeholder="g" style="flex: 1;">
-                <button onclick="addIngredientToRecipeDraft()" style="flex: 0.8;">+ Add</button>
-            </div>
-
-            <button onclick="saveNewRecipe()" style="width: 100%; margin-top: 8px; background-color: var(--success); padding: 8px;">Salva Pasto Pronto</button>
-        </div>
-
-        <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
-
-        <h4>Elenco Pasti Pronti Salvati</h4>
-        <div id="savedRecipesList"></div>
-    </div>
-</div>
-
-<!-- DRAWER 4: STORICO -->
-<div id="historyDrawer" class="drawer-overlay" onclick="closeDrawerOnBg(event, 'historyDrawer')">
-    <div class="drawer-content">
-        <div class="drawer-header">
-            <h3>📋 Storico Giornaliero</h3>
-            <div style="display: flex; gap: 8px; align-items: center;">
-                <button onclick="clearHistory()" class="btn-danger">Cancella Tutto</button>
-                <button class="close-btn" onclick="toggleDrawer('historyDrawer')">✕</button>
-            </div>
-        </div>
-        <div id="historyList"></div>
-    </div>
 </div>
 
 <script>
-    const BASE_FOOD_DATABASE = [
-        { marca: 'Primia', nome: 'Yogurt Greco', kcal: 58, c: 4.5, g: 0.1, p: 10, porzione_g: 150 },
-        { marca: 'Primia', nome: 'Pasta', kcal: 307, c: 61, g: 1.1, p: 12, porzione_g: 80 },
-        { marca: '', nome: 'Olio Extravergine', kcal: 900, c: 0, g: 100, p: 0, porzione_g: 10 },
-        { marca: 'Santa Lucia', nome: 'Ricotta Light', kcal: 112, c: 5.5, g: 6, p: 9, porzione_g: 90 },
-        { marca: 'Del Zoppo', nome: 'Bresaola', kcal: 165, c: 0.5, g: 3, p: 34, porzione_g: 50 },
-        { marca: 'Mare Blù', nome: 'Tonno Vero Naturale', kcal: 103, c: 0, g: 0.8, p: 24, porzione_g: 56 },
-        { marca: 'Rizzoli', nome: 'Sgombro', kcal: 119, c: 0, g: 3, p: 23, porzione_g: 90 },
-        { marca: 'Mulino Bianco', nome: 'Pane a Fette Integrale', kcal: 275, c: 38, g: 6.8, p: 11, porzione_g: 23 },
-        { marca: 'Primia', nome: 'Riso Parboiled', kcal: 349, c: 78, g: 0.8, p: 6.9, porzione_g: 80 },
-        { marca: 'Primia', nome: 'Riso Basmati', kcal: 354, c: 80, g: 0.4, p: 6.7, porzione_g: 80 },
-        { marca: 'Primia', nome: 'Fagioli Rossi Lessi', kcal: 105, c: 12.1, g: 0.8, p: 9, porzione_g: 140 },
-        { marca: '', nome: 'Petto di Pollo', kcal: 96, c: 0, g: 0.6, p: 22, porzione_g: 150 },
-        { marca: 'Ferrarini', nome: 'Prosciutto Cotto', kcal: 158, c: 0.4, g: 8.5, p: 19.6, porzione_g: 60 },
-        { marca: 'Recla', nome: 'Speck', kcal: 266, c: 0.5, g: 16, p: 30, porzione_g: 50 },
-        { marca: 'Santa Lucia', nome: 'Mozzarella Light', kcal: 171, c: 1, g: 11, p: 17, porzione_g: 100 },
-        { marca: '', nome: 'Uova', kcal: 128, c: 0, g: 8.7, p: 12.4, porzione_g: 60 },
-        { marca: 'Fiorentini', nome: 'Avena', kcal: 403, c: 59, g: 6.3, p: 21, porzione_g: 40 },
-        { marca: 'Filippi', nome: 'Avena', kcal: 364, c: 60, g: 6.2, p: 12, porzione_g: 40 },
-        { marca: 'Mila', nome: 'Latte Parzialmente Scremato No Lattosio', kcal: 47, c: 4.9, g: 1.6, p: 3.2, porzione_g: 200 },
-        { marca: '', nome: 'Pane Integrale', kcal: 253, c: 55.4, g: 1, p: 9, porzione_g: 50 },
-        { marca: '', nome: 'Banana', kcal: 93, c: 20, g: 0.2, p: 1.2, porzione_g: 120 },
-        { marca: '', nome: 'Mela', kcal: 52, c: 14, g: 0.2, p: 0.3, porzione_g: 150 },
-        { marca: 'WEB', nome: 'CROISSANT VUOTO', kcal: 410, c: 45, g: 21, p: 8.2, porzione_g: 50 },
-        { marca: 'WEB', nome: 'CROISSANT FARCITO CREMA/MARMELLATA', kcal: 380, c: 52, g: 16, p: 6.5, porzione_g: 70 },
-        { marca: 'WEB', nome: 'CREMA NOCCIOLE E CACAO', kcal: 539, c: 57.5, g: 30.9, p: 6.3, porzione_g: 15 },
-        { marca: 'WEB', nome: 'CIOCCOLATO FONDENTE (70%)', kcal: 566, c: 34, g: 42.6, p: 7.8, porzione_g: 20 },
-        { marca: 'WEB', nome: 'GELATO ARTIGIANALE (GENERICO)', kcal: 220, c: 25, g: 11, p: 4, porzione_g: 100 }
-    ];
+  // Inizializza il database locale leggendo da localStorage o creando un array vuoto
+  let databaseCibo = JSON.parse(localStorage.getItem('databaseCibo')) || [];
 
-    let FOOD_DATABASE = [...BASE_FOOD_DATABASE];
-    let currentDayFoods = [];
-    let currentDayActivities = [];
-    let currentWaterMl = 0;
-    let waterTargetMl = 2000;
-    let recipeDraftIngredients = [];
+  // Al caricamento della pagina, mostra i dati già salvati
+  document.addEventListener('DOMContentLoaded', () => {
+    if (databaseCibo.length > 0) {
+      mostraMessaggio(`Caricati ${databaseCibo.length} alimenti dalla memoria locale.`, 'green');
+      mostraRisultati(databaseCibo.slice(0, 10)); // Mostra i primi 10
+    }
+  });
 
-    let currentSex = 'F';
+  // Funzione per importare e normalizzare il file Excel
+  function importaExcel() {
+    const input = document.getElementById('excelFileInput');
+    const status = document.getElementById('statusMessage');
 
-    // STRUTTURA MULTI-PROFILO SEPARATA
-    let appData = {
-        activeSex: 'F',
-        profiles: {
-            F: { age: 30, height: 165, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [] },
-            M: { age: 40, height: 175, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [] }
-        },
-        recipes: [],
-        entries: []
+    if (!input.files || input.files.length === 0) {
+      mostraMessaggio("Seleziona prima un file .xlsx!", "red");
+      return;
+    }
+
+    const file = input.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        
+        // Prendi il primo foglio dell'Excel
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+
+        // Converte il foglio in matrice di righe
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+        if (rows.length === 0) {
+          mostraMessaggio("Il file Excel è vuoto!", "red");
+          return;
+        }
+
+        // Trova la riga che contiene l'intestazione 'alimento' o 'alimento '
+        let headerIndex = -1;
+        for (let i = 0; i < rows.length; i++) {
+          const rowStr = rows[i].join(" ").toLowerCase();
+          if (rowStr.includes("alimento")) {
+            headerIndex = i;
+            break;
+          }
+        }
+
+        if (headerIndex === -1) {
+          mostraMessaggio("Impossibile trovare la colonna 'alimento' nel file!", "red");
+          return;
+        }
+
+        // Normalizza le intestazioni (rimuove spazi vuoti iniziali e finali)
+        const headers = rows[headerIndex].map(h => String(h).trim().toLowerCase());
+
+        // Mappa le righe successive trasformandole in oggetti
+        const alimentiPuliti = [];
+        for (let i = headerIndex + 1; i < rows.length; i++) {
+          const row = rows[i];
+          
+          // Salta le righe vuote
+          if (!row || row.every(val => val === "")) continue;
+
+          let item = {};
+          headers.forEach((header, index) => {
+            if (header) {
+              item[header] = row[index] !== undefined ? row[index] : "";
+            }
+          });
+
+          // Aggiungi solo se ha un nome alimento valido
+          const nomeAlimento = item['alimento'] || item['nome'];
+          if (nomeAlimento && String(nomeAlimento).trim() !== "") {
+            alimentiPuliti.push(item);
+          }
+        }
+
+        // Salva in memoria locale
+        databaseCibo = alimentiPuliti;
+        localStorage.setItem('databaseCibo', JSON.stringify(databaseCibo));
+
+        mostraMessaggio(`🎉 Importati con successo ${databaseCibo.length} alimenti!`, 'green');
+        mostraRisultati(databaseCibo.slice(0, 10));
+
+      } catch (err) {
+        console.error(err);
+        mostraMessaggio("Errore nella lettura del file Excel.", "red");
+      }
     };
 
-    window.onload = function() {
-        const customFoods = localStorage.getItem('customFoodsDatabase');
-        if (customFoods) {
-            FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...JSON.parse(customFoods)];
-        }
+    reader.readAsArrayBuffer(file);
+  }
 
-        const savedData = localStorage.getItem('nutritionTrackerDataWeb');
-        if (savedData) {
-            const parsed = JSON.parse(savedData);
-            if (parsed.profiles) {
-                appData = parsed;
-            } else {
-                // Migrazione vecchi dati
-                appData.profiles[parsed.sex || 'F'] = {
-                    age: parsed.age || 30,
-                    height: parsed.height || 165,
-                    activity: parsed.activity || 1.55,
-                    deficitPct: parsed.deficitPct !== undefined ? parsed.deficitPct : 10,
-                    targetKcal: parsed.targetKcal || 0,
-                    weightHistory: parsed.weightHistory || []
-                };
-                appData.recipes = parsed.recipes || [];
-                appData.entries = parsed.entries || [];
-            }
-        }
+  // Funzione di ricerca tollerante e sicura
+  function gestisciRicerca() {
+    const query = document.getElementById('searchInput').value.toLowerCase().trim();
 
-        currentSex = appData.activeSex || 'F';
-        document.getElementById('sexSelect').value = currentSex;
-
-        loadProfileUI();
-        loadDraftFromStorage();
-        renderHistory();
-        renderSavedRecipes();
-    };
-
-    function switchProfile() {
-        currentSex = document.getElementById('sexSelect').value;
-        appData.activeSex = currentSex;
-        loadProfileUI();
+    if (!query) {
+      mostraRisultati(databaseCibo.slice(0, 10));
+      return;
     }
 
-    function loadProfileUI() {
-        const prof = appData.profiles[currentSex];
+    const risultati = databaseCibo.filter(item => {
+      const alimento = String(item['alimento'] || item['nome'] || '').toLowerCase();
+      const marca = String(item['marca'] || '').toLowerCase();
 
-        if (currentSex === 'M') {
-            document.body.className = 'theme-male';
-            document.getElementById('waterLabelText').textContent = "Oggi ti sei idratato abbastanza?";
-        } else {
-            document.body.className = 'theme-female';
-            document.getElementById('waterLabelText').textContent = "Oggi ti sei idratata abbastanza?";
-        }
+      return alimento.includes(query) || marca.includes(query);
+    });
 
-        document.getElementById('age').value = prof.age;
-        document.getElementById('height').value = prof.height;
-        document.getElementById('activity').value = prof.activity;
-        document.getElementById('deficitSelect').value = prof.deficitPct;
+    mostraRisultati(risultati);
+  }
 
-        if (prof.weightHistory.length > 0) {
-            document.getElementById('currentWeightInput').value = prof.weightHistory[prof.weightHistory.length - 1].weight;
-        } else {
-            document.getElementById('currentWeightInput').value = '';
-        }
+  // Funzione per mostrare i risultati a schermo
+  function mostraRisultati(lista) {
+    const listContainer = document.getElementById('foodList');
+    listContainer.innerHTML = "";
 
-        calculateWaterTarget();
-        calculateTDEE();
-        checkWeightReminder();
+    if (lista.length === 0) {
+      listContainer.innerHTML = "<li style='padding: 12px; color: #777;'>Nessun alimento trovato.</li>";
+      return;
     }
 
-    function resetCurrentProfileData() {
-        const profileLabel = currentSex === 'M' ? "Uomo" : "Donna";
-        if (confirm(`Sei sicuro di voler azzerare le pesate e i parametri del Profilo ${profileLabel}? I tuoi pasti salvati e il diario non verranno cancellati.`)) {
-            appData.profiles[currentSex] = {
-                age: currentSex === 'M' ? 40 : 30,
-                height: currentSex === 'M' ? 175 : 165,
-                activity: 1.55,
-                deficitPct: 10,
-                targetKcal: 0,
-                weightHistory: []
-            };
-            saveDataToStorage();
-            loadProfileUI();
-            alert(`✅ Dati del Profilo ${profileLabel} azzerati con successo!`);
-        }
-    }
-
-    function autoSaveDraft() {
-        const draft = {
-            currentDayFoods: currentDayFoods,
-            currentDayActivities: currentDayActivities,
-            currentWaterMl: currentWaterMl
-        };
-        localStorage.setItem('todayDraftNutriTracker', JSON.stringify(draft));
-    }
-
-    function loadDraftFromStorage() {
-        const draftStr = localStorage.getItem('todayDraftNutriTracker');
-        if (draftStr) {
-            try {
-                const draft = JSON.parse(draftStr);
-                currentDayFoods = draft.currentDayFoods || [];
-                currentDayActivities = draft.currentDayActivities || [];
-                currentWaterMl = draft.currentWaterMl || 0;
-                updateTodaySummary();
-                updateActivitiesSummary();
-                updateWaterDisplay();
-            } catch(e){}
-        }
-    }
-
-    function calculateWaterTarget() {
-        const prof = appData.profiles[currentSex];
-        const lastWeight = prof.weightHistory.length > 0 ? prof.weightHistory[prof.weightHistory.length - 1].weight : (currentSex === 'M' ? 75 : 60);
-        let target = currentSex === 'M' ? 2500 : 2000;
-
-        if (lastWeight > 80) target += 300;
-        else if (lastWeight < 55) target -= 200;
-
-        waterTargetMl = target;
-        updateWaterDisplay();
-    }
-
-    function addWater(amount) {
-        currentWaterMl = Math.max(0, currentWaterMl + amount);
-        updateWaterDisplay();
-        autoSaveDraft();
-    }
-
-    function updateWaterDisplay() {
-        document.getElementById('waterCurrentDisplay').textContent = `${currentWaterMl} / ${waterTargetMl} ml`;
-    }
-
-    function calculateTDEE() {
-        const age = parseFloat(document.getElementById('age').value) || 30;
-        const height = parseFloat(document.getElementById('height').value) || 165;
-        const actFactor = parseFloat(document.getElementById('activity').value) || 1.55;
-        const deficitPct = parseFloat(document.getElementById('deficitSelect').value) || 0;
-
-        const prof = appData.profiles[currentSex];
-        const currentWeight = prof.weightHistory.length > 0 ? prof.weightHistory[prof.weightHistory.length - 1].weight : (currentSex === 'M' ? 75 : 60);
-
-        let bmr = (10 * currentWeight) + (6.25 * height) - (5 * age);
-        bmr = (currentSex === 'M') ? bmr + 5 : bmr - 161;
-
-        const tdee = Math.round(bmr * actFactor);
-        const targetKcal = Math.round(tdee * (1 - (deficitPct / 100)));
-
-        prof.age = age;
-        prof.height = height;
-        prof.activity = actFactor;
-        prof.deficitPct = deficitPct;
-        prof.targetKcal = targetKcal;
-
-        saveDataToStorage();
-
-        document.getElementById('targetResultMain').textContent = `${targetKcal} kcal / giorno`;
-        calculateWaterTarget();
-        updateActivitiesSummary();
-    }
-
-    function addWeightRecord() {
-        const val = parseFloat(document.getElementById('currentWeightInput').value);
-        if (!val || isNaN(val)) {
-            alert("Inserisci un peso valido.");
-            return;
-        }
-
-        const prof = appData.profiles[currentSex];
-        prof.weightHistory.push({
-            date: new Date().toLocaleDateString('it-IT'),
-            weight: val,
-            timestamp: Date.now()
-        });
-
-        saveDataToStorage();
-        calculateTDEE();
-        checkWeightReminder();
-        drawWeightChart();
-        alert(`✅ Pesata di ${val} kg registrata!`);
-    }
-
-    function checkWeightReminder() {
-        const banner = document.getElementById('weightReminderBanner');
-        const prof = appData.profiles[currentSex];
-
-        if (prof.weightHistory.length === 0) {
-            banner.style.display = 'block';
-            drawWeightChart();
-            return;
-        }
-
-        const lastRecord = prof.weightHistory[prof.weightHistory.length - 1];
-        const diffDays = Math.floor((Date.now() - lastRecord.timestamp) / (1000 * 60 * 60 * 24));
-        banner.style.display = (diffDays >= 14) ? 'block' : 'none';
-        
-        drawWeightChart();
-    }
-
-    function drawWeightChart() {
-        const canvas = document.getElementById('weightChart');
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const prof = appData.profiles[currentSex];
-        const history = prof.weightHistory;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        if (history.length < 1) {
-            ctx.fillStyle = "#64748b";
-            ctx.font = "12px sans-serif";
-            ctx.fillText("Nessuna pesata registrata per questo profilo.", 20, 80);
-            return;
-        }
-
-        const padding = 25;
-        const width = canvas.width - (padding * 2);
-        const height = canvas.height - (padding * 2);
-
-        const weights = history.map(h => h.weight);
-        let minW = Math.min(...weights) - 1;
-        let maxW = Math.max(...weights) + 1;
-        if (minW === maxW) { minW -= 1; maxW += 1; }
-
-        ctx.beginPath();
-        ctx.strokeStyle = "#cbd5e1";
-        ctx.lineWidth = 1;
-        ctx.moveTo(padding, padding);
-        ctx.lineTo(padding, canvas.height - padding);
-        ctx.lineTo(canvas.width - padding, canvas.height - padding);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.strokeStyle = currentSex === 'M' ? '#0284c7' : '#ec4899';
-        ctx.lineWidth = 2;
-
-        history.forEach((item, idx) => {
-            const x = history.length === 1 ? canvas.width / 2 : padding + (idx / (history.length - 1)) * width;
-            const y = canvas.height - padding - ((item.weight - minW) / (maxW - minW)) * height;
-
-            if (idx === 0) ctx.moveTo(x, y);
-            else ctx.lineTo(x, y);
-        });
-        ctx.stroke();
-
-        history.forEach((item, idx) => {
-            const x = history.length === 1 ? canvas.width / 2 : padding + (idx / (history.length - 1)) * width;
-            const y = canvas.height - padding - ((item.weight - minW) / (maxW - minW)) * height;
-
-            ctx.beginPath();
-            ctx.fillStyle = "#ffffff";
-            ctx.arc(x, y, 4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = "#1e293b";
-            ctx.stroke();
-
-            ctx.fillStyle = "#1e293b";
-            ctx.font = "10px sans-serif";
-            ctx.fillText(`${item.weight}kg`, x - 10, y - 8);
-        });
-    }
-
-    function addActivityToToday() {
-        const select = document.getElementById('dailyActivitySelect');
-        const text = select.options[select.selectedIndex].text;
-        const met = parseFloat(select.options[select.selectedIndex].getAttribute('data-met')) || 0;
-        const duration = parseFloat(document.getElementById('activityDurationInput').value) || 0;
-
-        if (duration <= 0) {
-            alert("Inserisci i minuti di durata dell'attività.");
-            return;
-        }
-
-        const prof = appData.profiles[currentSex];
-        const currentWeight = prof.weightHistory.length > 0 ? prof.weightHistory[prof.weightHistory.length - 1].weight : (currentSex === 'M' ? 75 : 60);
-        const kcal = Math.round((met * 3.5 * currentWeight / 200) * duration);
-
-        currentDayActivities.push({
-            id: Date.now(),
-            name: text,
-            duration: duration,
-            kcal: kcal
-        });
-
-        document.getElementById('activityDurationInput').value = '';
-        updateActivitiesSummary();
-        autoSaveDraft();
-    }
-
-    function removeActivity(id) {
-        currentDayActivities = currentDayActivities.filter(a => a.id !== id);
-        updateActivitiesSummary();
-        autoSaveDraft();
-    }
-
-    function updateActivitiesSummary() {
-        const list = document.getElementById('todayActivitiesList');
-        list.innerHTML = '';
-
-        let totKcal = 0;
-        currentDayActivities.forEach(a => {
-            totKcal += a.kcal;
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <span>🏃‍♂️ ${a.name} (${a.duration} min) - <strong>~${a.kcal} kcal</strong></span>
-                <button type="button" class="btn-danger" onclick="removeActivity(${a.id})">Elimina</button>
-            `;
-            list.appendChild(li);
-        });
-
-        document.getElementById('activityBurnEstimate').textContent = `Totale Bruciato Oggi: ~${totKcal} kcal`;
-    }
-
-    function searchFood(meal) {
-        const inputEl = document.getElementById(`foodInput-${meal}`);
-        const query = inputEl.value.toLowerCase().trim();
-        const resultsDiv = document.getElementById(`searchResults-${meal}`);
-        
-        if (query.length < 1) {
-            resultsDiv.style.display = 'none';
-            return;
-        }
-
-        const matches = FOOD_DATABASE.filter(f => {
-            const fullText = (f.marca + " " + f.nome).toLowerCase();
-            return fullText.includes(query);
-        });
-
-        if (matches.length > 0) {
-            resultsDiv.innerHTML = matches.map(f => {
-                const label = (f.marca && f.marca !== 'WEB') ? `${f.nome} (${f.marca})` : f.nome;
-                return `<div class="autocomplete-item" onclick="selectFoodForMeal('${meal}', '${label.replace(/'/g, "\\'")}', ${f.porzione_g})">${label}</div>`;
-            }).join('');
-            resultsDiv.style.display = 'block';
-        } else {
-            resultsDiv.style.display = 'none';
-        }
-    }
-
-    function selectFoodForMeal(meal, name, defaultGrams) {
-        document.getElementById(`foodInput-${meal}`).value = name;
-        document.getElementById(`foodGrams-${meal}`).value = defaultGrams || 100;
-        document.getElementById(`searchResults-${meal}`).style.display = 'none';
-    }
-
-    function addFoodToMeal(meal) {
-        const inputName = document.getElementById(`foodInput-${meal}`).value.trim();
-        let grams = parseFloat(document.getElementById(`foodGrams-${meal}`).value);
-
-        if (!inputName) return;
-
-        const match = FOOD_DATABASE.find(f => {
-            const label = (f.marca && f.marca !== 'WEB') ? `${f.nome} (${f.marca})` : f.nome;
-            return label.toLowerCase() === inputName.toLowerCase() || f.nome.toLowerCase() === inputName.toLowerCase();
-        });
-
-        if (match) {
-            if (!grams || isNaN(grams)) grams = match.porzione_g || 100;
-            const factor = grams / 100;
-            
-            currentDayFoods.push({
-                id: Date.now(),
-                meal: meal,
-                nome: (match.marca && match.marca !== 'WEB') ? `${match.nome} (${match.marca})` : match.nome,
-                grams: grams,
-                kcal: Math.round((match.kcal || 0) * factor),
-                p: Math.round((match.p || 0) * factor * 10) / 10,
-                g: Math.round((match.g || 0) * factor * 10) / 10,
-                c: Math.round((match.c || 0) * factor * 10) / 10
-            });
-        } else {
-            if (!grams || isNaN(grams)) grams = 100;
-            currentDayFoods.push({
-                id: Date.now(),
-                meal: meal,
-                nome: inputName,
-                grams: grams,
-                kcal: 0, p: 0, g: 0, c: 0
-            });
-        }
-
-        document.getElementById(`foodInput-${meal}`).value = '';
-        document.getElementById(`foodGrams-${meal}`).value = '';
-        document.getElementById(`searchResults-${meal}`).style.display = 'none';
-        updateTodaySummary();
-        autoSaveDraft();
-    }
-
-    function removeFood(id) {
-        currentDayFoods = currentDayFoods.filter(item => item.id !== id);
-        updateTodaySummary();
-        autoSaveDraft();
-    }
-
-    function updateTodaySummary() {
-        ['Colazione', 'Pranzo', 'Cena', 'Snack'].forEach(meal => {
-            document.getElementById(`list-${meal}`).innerHTML = '';
-        });
-
-        let totKcal = 0, totP = 0, totG = 0, totC = 0;
-
-        currentDayFoods.forEach((item) => {
-            totKcal += item.kcal;
-            totP += item.p;
-            totG += item.g;
-            totC += item.c;
-
-            const list = document.getElementById(`list-${item.meal}`);
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <span>${item.nome} (${item.grams}g) - <strong>${item.kcal} kcal</strong></span>
-                <button type="button" class="btn-danger" onclick="removeFood(${item.id})">Elimina</button>
-            `;
-            list.appendChild(li);
-        });
-
-        document.getElementById('totals').textContent = 
-            `Totale Giornata: ${totKcal} kcal | P: ${totP.toFixed(1)}g | G: ${totG.toFixed(1)}g | C: ${totC.toFixed(1)}g`;
-    }
-
-    function generateFeedback(totalKcal, targetKcal, waterMl) {
-        const totBurned = currentDayActivities.reduce((acc, a) => acc + a.kcal, 0);
-        const netKcal = totalKcal - totBurned;
-        const target = targetKcal || 1850;
-        const isWaterOk = waterMl >= waterTargetMl;
-
-        if (totalKcal === 0) return "Registra i pasti per calcolare il bilancio nutrizionale.";
-
-        let waterNote = isWaterOk ? " 💧 Ottima idratazione!" : " 💧 Ricorda di bere più acqua.";
-
-        if (currentDayActivities.length > 0 && Math.abs(netKcal - target) <= 150) {
-            return `🌟 <strong>Giornata perfetta!</strong> Attività svolte e bilancio calorico perfettamente centrato.${waterNote}`;
-        } else if (netKcal > target + 150) {
-            return `💪 <strong>Buon impegno!</strong> Introito di ${totalKcal} kcal. L'allenamento (~${totBurned} kcal bruciate) compensa l'eccedenza.${waterNote}`;
-        } else if (netKcal < target - 300) {
-            return `🍃 <strong>Giornata leggera!</strong> Introito contenuto rispetto al target di ${target} kcal.${waterNote}`;
-        } else {
-            return `✨ <strong>Bilancio sotto controllo!</strong> Giornata gestita con buon equilibrio.${waterNote}`;
-        }
-    }
-
-    function saveDay() {
-        if (currentDayFoods.length === 0) return;
-
-        const prof = appData.profiles[currentSex];
-        const totBurned = currentDayActivities.reduce((acc, a) => acc + a.kcal, 0);
-
-        let totKcal = 0, totP = 0, totG = 0, totC = 0;
-        currentDayFoods.forEach(i => {
-            totKcal += i.kcal; totP += i.p; totG += i.g; totC += i.c;
-        });
-
-        const mealsSummary = ['Colazione', 'Pranzo', 'Cena', 'Snack'].map(meal => {
-            const items = currentDayFoods.filter(f => f.meal === meal).map(f => f.nome).join(', ');
-            return items ? `<strong>${meal}:</strong> ${items}` : null;
-        }).filter(Boolean).join(' | ');
-
-        let actSummary = currentDayActivities.length > 0 ? 
-            currentDayActivities.map(a => `${a.name} (${a.duration} min)`).join(', ') + ` [~${totBurned} kcal]` : 'Nessuna';
-
-        const comment = generateFeedback(totKcal, prof.targetKcal, currentWaterMl);
-
-        const entry = {
-            date: new Date().toLocaleDateString('it-IT'),
-            profileSex: currentSex,
-            hasActivity: currentDayActivities.length > 0,
-            activityText: actSummary,
-            foodSummary: mealsSummary,
-            waterMl: currentWaterMl,
-            totalKcal: totKcal,
-            totalProt: totP.toFixed(1),
-            totalFat: totG.toFixed(1),
-            totalCarb: totC.toFixed(1),
-            comment: comment
-        };
-
-        appData.entries.unshift(entry);
-        saveDataToStorage();
-
-        currentDayFoods = [];
-        currentDayActivities = [];
-        currentWaterMl = 0;
-        localStorage.removeItem('todayDraftNutriTracker');
-
-        updateWaterDisplay();
-        updateTodaySummary();
-        updateActivitiesSummary();
-        renderHistory();
-        toggleDrawer('historyDrawer');
-    }
-
-    function renderHistory() {
-        const entries = appData.entries;
-        const historyList = document.getElementById('historyList');
-
-        if (entries.length === 0) {
-            historyList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 20px;">Nessuna registrazione presente nello storico.</p>';
-            return;
-        }
-
-        historyList.innerHTML = entries.map(item => `
-            <div class="history-item">
-                <div class="history-header">
-                    <span class="history-date">${item.date} (${item.profileSex === 'M' ? '👨 Uomo' : '👩 Donna'})</span>
-                    <span class="history-tag ${item.hasActivity ? 'tag-good' : 'tag-neutral'}">
-                        ${item.hasActivity ? 'Attività' : 'Riposo'}
-                    </span>
-                </div>
-                <div class="history-details" style="margin-top:4px; line-height: 1.35;">
-                    🏃‍♂️ <strong>Attività:</strong> ${item.activityText}<br>
-                    💧 <strong>Acqua:</strong> ${item.waterMl || 0} ml<br>
-                    🥗 <strong>Pasti:</strong> ${item.foodSummary}<br>
-                    🔥 <strong>Macro:</strong> ~${item.totalKcal} kcal (P: ${item.totalProt}g | G: ${item.totalFat}g | C: ${item.totalCarb}g)
-                    <div class="feedback-box">💬 ${item.comment}</div>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    function clearHistory() {
-        if (confirm("Sei sicuro di voler cancellare lo storico delle giornate?")) {
-            appData.entries = [];
-            saveDataToStorage();
-            renderHistory();
-        }
-    }
-
-    function toggleDrawer(id) {
-        const drawer = document.getElementById(id);
-        const isOpen = drawer.style.display === 'flex';
-        drawer.style.display = isOpen ? 'none' : 'flex';
-
-        if (id === 'profileDrawer' && !isOpen) {
-            setTimeout(drawWeightChart, 100);
-        }
-    }
-
-    function closeDrawerOnBg(event, id) {
-        if (event.target.classList.contains('drawer-overlay')) {
-            toggleDrawer(id);
-        }
-    }
-
-    function saveDataToStorage() {
-        localStorage.setItem('nutritionTrackerDataWeb', JSON.stringify(appData));
-    }
-
-    function addIngredientToRecipeDraft() {
-        const inputName = document.getElementById('foodInput-Recipe').value.trim();
-        let grams = parseFloat(document.getElementById('foodGrams-Recipe').value);
-
-        if (!inputName || !grams) return;
-
-        const match = FOOD_DATABASE.find(f => {
-            const label = (f.marca && f.marca !== 'WEB') ? `${f.nome} (${f.marca})` : f.nome;
-            return label.toLowerCase() === inputName.toLowerCase() || f.nome.toLowerCase() === inputName.toLowerCase();
-        });
-
-        recipeDraftIngredients.push({
-            nome: match ? ((match.marca && match.marca !== 'WEB') ? `${match.nome} (${match.marca})` : match.nome) : inputName,
-            grams: grams
-        });
-
-        document.getElementById('foodInput-Recipe').value = '';
-        document.getElementById('foodGrams-Recipe').value = '';
-        renderRecipeDraft();
-    }
-
-    function renderRecipeDraft() {
-        const container = document.getElementById('recipeIngredientsList');
-        if (recipeDraftIngredients.length === 0) {
-            container.innerHTML = '<span style="font-size:0.75rem; color:var(--text-muted);">Nessun ingrediente inserito.</span>';
-            return;
-        }
-
-        container.innerHTML = recipeDraftIngredients.map((ing, idx) => `
-            <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding:2px 0;">
-                <span>${ing.nome} (${ing.grams}g)</span>
-                <button type="button" class="btn-danger" onclick="recipeDraftIngredients.splice(${idx},1); renderRecipeDraft();">✕</button>
-            </div>
-        `).join('');
-    }
-
-    function saveNewRecipe() {
-        const name = document.getElementById('recipeNameInput').value.trim();
-        if (!name || recipeDraftIngredients.length === 0) {
-            alert("Inserisci un nome e almeno un ingrediente.");
-            return;
-        }
-
-        appData.recipes.push({
-            id: Date.now(),
-            name: name,
-            ingredients: [...recipeDraftIngredients]
-        });
-
-        saveDataToStorage();
-        recipeDraftIngredients = [];
-        document.getElementById('recipeNameInput').value = '';
-        renderRecipeDraft();
-        renderSavedRecipes();
-        alert(`✅ Pasto "${name}" salvato!`);
-    }
-
-    function renderSavedRecipes() {
-        const container = document.getElementById('savedRecipesList');
-        if (appData.recipes.length === 0) {
-            container.innerHTML = '<span style="font-size:0.8rem; color:var(--text-muted);">Nessun pasto pronto salvato.</span>';
-            return;
-        }
-
-        container.innerHTML = appData.recipes.map(recipe => `
-            <div class="meal-card">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <strong>${recipe.name}</strong>
-                    <button class="btn-danger" onclick="deleteRecipe(${recipe.id})">Elimina</button>
-                </div>
-                <div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">
-                    ${recipe.ingredients.map(i => `${i.nome} (${i.grams}g)`).join(', ')}
-                </div>
-            </div>
-        `).join('');
-    }
-
-    function deleteRecipe(id) {
-        appData.recipes = appData.recipes.filter(r => r.id !== id);
-        saveDataToStorage();
-        renderSavedRecipes();
-    }
-
-    function openRecipeSelector(mealTarget) {
-        if (appData.recipes.length === 0) {
-            alert("Non hai ancora salvato nessun pasto pronto. Puoi crearne uno dal menu '🍲 Pasti Salvati'.");
-            return;
-        }
-
-        let msg = "Seleziona il numero del pasto pronto da inserire:\n\n";
-        appData.recipes.forEach((r, idx) => {
-            msg += `${idx + 1}. ${r.name}\n`;
-        });
-
-        const choice = prompt(msg);
-        const idx = parseInt(choice) - 1;
-
-        if (!isNaN(idx) && appData.recipes[idx]) {
-            const recipe = appData.recipes[idx];
-            recipe.ingredients.forEach(ing => {
-                document.getElementById(`foodInput-${mealTarget}`).value = ing.nome;
-                document.getElementById(`foodGrams-${mealTarget}`).value = ing.grams;
-                addFoodToMeal(mealTarget);
-            });
-        }
-    }
-
-    function importExcelDatabase() {
-        const fileInput = document.getElementById('excelFileInput');
-        const file = fileInput.files[0];
-
-        if (!file) {
-            alert("Seleziona prima un file Excel (.xlsx) da caricare.");
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                const jsonRows = XLSX.utils.sheet_to_json(worksheet);
-
-                const importedFoods = jsonRows.map(row => ({
-                    marca: row.marca || '',
-                    nome: row.alimento || row.nome || 'Alimento',
-                    kcal: parseFloat(row.kcal) || 0,
-                    c: parseFloat(row.carboidrati) || 0,
-                    g: parseFloat(row.grassi) || 0,
-                    p: parseFloat(row.proteine) || 0,
-                    porzione_g: parseFloat(row['peso per porzione']) || 100
-                })).filter(f => f.nome && f.kcal > 0);
-
-                if (importedFoods.length === 0) {
-                    alert("Nessun alimento valido trovato nel foglio.");
-                    return;
-                }
-
-                FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...importedFoods];
-                localStorage.setItem('customFoodsDatabase', JSON.stringify(importedFoods));
-
-                alert(`🎉 Importati con successo ${importedFoods.length} alimenti dal tuo file Excel!`);
-                fileInput.value = '';
-                toggleDrawer('addFoodDrawer');
-
-            } catch (err) {
-                alert("Errore durante la lettura del file Excel: " + err.message);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
-    function exportBackup() {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
-            appData: appData,
-            customFoods: localStorage.getItem('customFoodsDatabase')
-        }));
-        const downloadAnchor = document.createElement('a');
-        downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `backup_nutritracker_${new Date().toISOString().slice(0,10)}.json`);
-        document.body.appendChild(downloadAnchor);
-        downloadAnchor.click();
-        downloadAnchor.remove();
-    }
-
-    function importBackup(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const parsed = JSON.parse(e.target.result);
-                if (parsed.appData) {
-                    appData = parsed.appData;
-                    saveDataToStorage();
-                }
-                if (parsed.customFoods) {
-                    localStorage.setItem('customFoodsDatabase', parsed.customFoods);
-                    FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...JSON.parse(parsed.customFoods)];
-                }
-                alert("✅ Backup ripristinato con successo!");
-                currentSex = appData.activeSex || 'F';
-                document.getElementById('sexSelect').value = currentSex;
-                loadProfileUI();
-                renderHistory();
-                renderSavedRecipes();
-            } catch (err) {
-                alert("File di backup non valido.");
-            }
-        };
-        reader.readAsText(file);
-    }
-
-    function addNewFoodToDatabase() {
-        const name = document.getElementById('newFoodName').value.trim();
-        const kcal = parseFloat(document.getElementById('newFoodKcal').value);
-        const p = parseFloat(document.getElementById('newFoodP').value) || 0;
-        const g = parseFloat(document.getElementById('newFoodG').value) || 0;
-        const c = parseFloat(document.getElementById('newFoodC').value) || 0;
-
-        if (!name || isNaN(kcal)) {
-            alert("Inserisci il nome e le Kcal dell'alimento.");
-            return;
-        }
-
-        const newFood = { marca: 'Personalizzato', nome: name, kcal: kcal, c: c, g: g, p: p, porzione_g: 100 };
-        FOOD_DATABASE.push(newFood);
-
-        const customFoods = JSON.parse(localStorage.getItem('customFoodsDatabase') || '[]');
-        customFoods.push(newFood);
-        localStorage.setItem('customFoodsDatabase', JSON.stringify(customFoods));
-
-        alert(`✅ Alimento "${name}" salvato!`);
-        document.getElementById('newFoodName').value = '';
-        document.getElementById('newFoodKcal').value = '';
-        document.getElementById('newFoodP').value = '';
-        document.getElementById('newFoodG').value = '';
-        document.getElementById('newFoodC').value = '';
-        toggleDrawer('addFoodDrawer');
-    }
+    lista.forEach(item => {
+      const li = document.createElement('li');
+      li.className = 'food-item';
+
+      const nome = item['alimento'] || item['nome'] || 'Senza nome';
+      const marca = item['marca'] ? item['marca'] : '';
+      const kcal = item['kcal'] || 0;
+      const carboidrati = item['carboidrati'] || 0;
+      const proteine = item['proteine'] || 0;
+      const grassi = item['grassi'] || 0;
+
+      li.innerHTML = `
+        <div class="food-info">
+          ${marca ? `<span class="food-brand">${marca}</span>` : ''}
+          <span class="food-title">${nome}</span>
+          <span class="food-macros">${kcal} kcal | C: ${carboidrati}g | P: ${proteine}g | G: ${grassi}g</span>
+        </div>
+      `;
+
+      listContainer.appendChild(li);
+    });
+  }
+
+  function mostraMessaggio(testo, colore) {
+    const status = document.getElementById('statusMessage');
+    status.innerText = testo;
+    status.style.color = colore === 'red' ? '#d32f2f' : '#2e7d32';
+  }
 </script>
 
 </body>
