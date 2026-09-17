@@ -354,7 +354,7 @@
                 <span class="icon">👤</span>
                 <span>Profilo</span>
             </button>
-            <button class="icon-btn" onclick="toggleDrawer('addFoodDrawer')" title="Cibo / Excel">
+            <button class="icon-btn" onclick="toggleDrawer('addFoodDrawer')" title="Cibo">
                 <span class="icon">➕</span>
                 <span>Cibo</span>
             </button>
@@ -567,7 +567,7 @@
     </div>
 </div>
 
-<!-- DRAWER 2: CIBO & EXCEL & BACKUP -->
+<!-- DRAWER 2: CIBO & BACKUP -->
 <div id="addFoodDrawer" class="drawer-overlay" onclick="closeDrawerOnBg(event, 'addFoodDrawer')">
     <div class="drawer-content">
         <div class="drawer-header">
@@ -576,15 +576,7 @@
         </div>
 
         <div style="background: var(--bg-color); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
-            <h4 style="margin-bottom: 4px; color: var(--primary);">🔄 Sincronizzazione da GitHub</h4>
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">I cibi vengono caricati in automatico all'avvio dal repository.</p>
-            <button onclick="syncDatabaseFromGithub(true)" class="btn-secondary" style="width: 100%; padding: 6px; font-size: 0.8rem;">🔄 Sincronizza Ora da GitHub</button>
-            
-            <hr style="margin: 8px 0; border: 0; border-top: 1px dashed var(--border);">
-
-            <h4 style="margin-bottom: 4px; color: var(--primary);">📂 Carica File Locale (Opzionale)</h4>
-            <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="font-size: 0.8rem;">
-            <button onclick="importExcelDatabase()" class="btn-secondary" style="width: 100%; margin-top: 6px; padding: 6px; font-size: 0.8rem;">Importa Manualmente File Locale</button>
+            <button onclick="syncDatabaseFromGithub(true)" class="btn-secondary" style="width: 100%; padding: 8px; font-size: 0.85rem;">🔄 Sincronizza Alimenti</button>
         </div>
 
         <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
@@ -678,7 +670,6 @@
 </div>
 
 <script>
-    // URL DIRETTO REALE AL VOSTRO FILE EXCEL
     const GITHUB_EXCEL_URL = 'https://raw.githubusercontent.com/Luxipher82/nutritraker/main/database.xlsx';
 
     const BASE_FOOD_DATABASE = [
@@ -747,27 +738,24 @@
         renderHistory();
         renderSavedRecipes();
 
-        // SCARICA AUTOMATICAMENTE L'EXCEL DA GITHUB ALL'AVVIO
         syncDatabaseFromGithub(false);
     };
 
-    // FUNZIONE AUTO-SYNC DA GITHUB (CON SUPPORTO ANTI-CACHE)
     function syncDatabaseFromGithub(showSuccessAlert) {
         fetch(GITHUB_EXCEL_URL + '?v=' + Date.now(), { cache: "no-store" })
             .then(res => {
-                if (!res.ok) throw new Error("File Excel su GitHub non trovato");
+                if (!res.ok) throw new Error();
                 return res.arrayBuffer();
             })
             .then(buffer => {
-                const count = parseExcelArrayBuffer(buffer);
+                parseExcelArrayBuffer(buffer);
                 if (showSuccessAlert) {
-                    alert(`✅ Database aggiornato con successo da GitHub (${count} alimenti)!`);
+                    alert("✅ Database aggiornato con successo");
                 }
             })
-            .catch(err => {
-                console.log("Sincronizzazione GitHub ignorata:", err.message);
+            .catch(() => {
                 if (showSuccessAlert) {
-                    alert("Impossibile scaricare l'Excel da GitHub. Assicurati che il file database.xlsx sia presente nel repository.");
+                    alert("⚠️ Errore durante l'aggiornamento.");
                 }
             });
     }
@@ -787,7 +775,7 @@
             }
         }
 
-        if (headerIndex === -1) return 0;
+        if (headerIndex === -1) return;
 
         const headers = rows[headerIndex].map(h => String(h).trim().toLowerCase());
 
@@ -819,8 +807,6 @@
             FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...importedFoods];
             localStorage.setItem('customFoodsDatabase', JSON.stringify(importedFoods));
         }
-
-        return importedFoods.length;
     }
 
     function switchProfile() {
@@ -1465,29 +1451,6 @@
         }
     }
 
-    function importExcelDatabase() {
-        const fileInput = document.getElementById('excelFileInput');
-        const file = fileInput.files[0];
-
-        if (!file) {
-            alert("Seleziona prima un file Excel (.xlsx) da caricare.");
-            return;
-        }
-
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const count = parseExcelArrayBuffer(e.target.result);
-                alert(`🎉 Importati con successo ${count} alimenti dal file locale!`);
-                fileInput.value = '';
-                toggleDrawer('addFoodDrawer');
-            } catch (err) {
-                alert("Errore durante la lettura del file Excel: " + err.message);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-
     function exportBackup() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
             appData: appData,
@@ -1549,7 +1512,8 @@
         customFoods.push(newFood);
         localStorage.setItem('customFoodsDatabase', JSON.stringify(customFoods));
 
-        alert(`✅ Alimento "${name}" salvato!`);
+        alert(`✅ Alimento salvato! Se hai modificato il file centrale, premi "Sincronizza Alimenti" per aggiornare la lista.`);
+        
         document.getElementById('newFoodName').value = '';
         document.getElementById('newFoodKcal').value = '';
         document.getElementById('newFoodP').value = '';
