@@ -28,7 +28,7 @@
         }
 
         html, body {
-            overscroll-behavior-y: contain; /* Previene il pull-to-refresh accidentale */
+            overscroll-behavior-y: contain;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text);
@@ -151,7 +151,6 @@
             flex: 1;
         }
 
-        /* BARRA ICONE COMPATTA IN ALTO */
         .icon-nav-bar {
             display: flex;
             justify-content: space-between;
@@ -249,7 +248,6 @@
             font-size: 1rem;
         }
 
-        /* PANNELLI SCORREVOLI */
         .drawer-overlay {
             position: fixed;
             top: 0;
@@ -399,7 +397,7 @@
         </div>
     </div>
 
-    <!-- DIARIO ALIMENTARE (I 4 PASTI DIVISI) -->
+    <!-- DIARIO ALIMENTARE -->
     <div class="card">
         <h3>Diario Alimentare di Oggi</h3>
 
@@ -477,7 +475,7 @@
 
         <hr style="margin: 12px 0; border: 0; border-top: 1px solid var(--border);">
 
-        <!-- SEZIONE ATTIVITÀ FISICHE MULTIPLE -->
+        <!-- ATTIVITÀ FISICHE MULTIPLE -->
         <h4>🏃‍♂️ Attività Fisiche di Oggi</h4>
         <div class="row" style="margin-top: 6px;">
             <select id="dailyActivitySelect" style="flex: 1.5;">
@@ -512,7 +510,7 @@
         <div class="row">
             <div class="form-group">
                 <label for="sexSelect">Sesso</label>
-                <select id="sexSelect" onchange="updateThemeAndRecalculate()">
+                <select id="sexSelect" onchange="switchProfile()">
                     <option value="F" selected>Donna 👩</option>
                     <option value="M">Uomo 👨</option>
                 </select>
@@ -564,6 +562,8 @@
             <label>Grafico Andamento Peso:</label>
             <canvas id="weightChart"></canvas>
         </div>
+
+        <button onclick="resetCurrentProfileData()" class="btn-danger" style="margin-top: 10px; width: 100%; padding: 8px;">🗑️ Azzera Dati e Pesate di questo Profilo</button>
     </div>
 </div>
 
@@ -673,7 +673,6 @@
 </div>
 
 <script>
-    // DATABASE COMPLETO
     const BASE_FOOD_DATABASE = [
         { marca: 'Primia', nome: 'Yogurt Greco', kcal: 58, c: 4.5, g: 0.1, p: 10, porzione_g: 150 },
         { marca: 'Primia', nome: 'Pasta', kcal: 307, c: 61, g: 1.1, p: 12, porzione_g: 80 },
@@ -697,8 +696,6 @@
         { marca: '', nome: 'Pane Integrale', kcal: 253, c: 55.4, g: 1, p: 9, porzione_g: 50 },
         { marca: '', nome: 'Banana', kcal: 93, c: 20, g: 0.2, p: 1.2, porzione_g: 120 },
         { marca: '', nome: 'Mela', kcal: 52, c: 14, g: 0.2, p: 0.3, porzione_g: 150 },
-        
-        // CIBI WEB (IN MAIUSCOLO)
         { marca: 'WEB', nome: 'CROISSANT VUOTO', kcal: 410, c: 45, g: 21, p: 8.2, porzione_g: 50 },
         { marca: 'WEB', nome: 'CROISSANT FARCITO CREMA/MARMELLATA', kcal: 380, c: 52, g: 16, p: 6.5, porzione_g: 70 },
         { marca: 'WEB', nome: 'CREMA NOCCIOLE E CACAO', kcal: 539, c: 57.5, g: 30.9, p: 6.3, porzione_g: 15 },
@@ -713,12 +710,17 @@
     let waterTargetMl = 2000;
     let recipeDraftIngredients = [];
 
-    let appData = { 
-        sex: 'F', age: 30, weight: 60, height: 165, activity: 1.55, deficitPct: 10,
-        targetKcal: 0, 
-        weightHistory: [],
+    let currentSex = 'F';
+
+    // STRUTTURA MULTI-PROFILO SEPARATA
+    let appData = {
+        activeSex: 'F',
+        profiles: {
+            F: { age: 30, height: 165, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [] },
+            M: { age: 40, height: 175, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [] }
+        },
         recipes: [],
-        entries: [] 
+        entries: []
     };
 
     window.onload = function() {
@@ -729,32 +731,83 @@
 
         const savedData = localStorage.getItem('nutritionTrackerDataWeb');
         if (savedData) {
-            appData = JSON.parse(savedData);
-            if (!appData.weightHistory) appData.weightHistory = [];
-            if (!appData.recipes) appData.recipes = [];
-            
-            document.getElementById('sexSelect').value = appData.sex || 'F';
-            document.getElementById('age').value = appData.age || 30;
-            document.getElementById('height').value = appData.height || 165;
-            document.getElementById('activity').value = appData.activity || 1.55;
-            document.getElementById('deficitSelect').value = appData.deficitPct !== undefined ? appData.deficitPct : 10;
-            
-            if (appData.weightHistory.length > 0) {
-                document.getElementById('currentWeightInput').value = appData.weightHistory[appData.weightHistory.length - 1].weight;
+            const parsed = JSON.parse(savedData);
+            if (parsed.profiles) {
+                appData = parsed;
+            } else {
+                // Migrazione vecchi dati
+                appData.profiles[parsed.sex || 'F'] = {
+                    age: parsed.age || 30,
+                    height: parsed.height || 165,
+                    activity: parsed.activity || 1.55,
+                    deficitPct: parsed.deficitPct !== undefined ? parsed.deficitPct : 10,
+                    targetKcal: parsed.targetKcal || 0,
+                    weightHistory: parsed.weightHistory || []
+                };
+                appData.recipes = parsed.recipes || [];
+                appData.entries = parsed.entries || [];
             }
-
-            renderHistory();
-            renderSavedRecipes();
         }
 
-        // Ripristina eventuale bozza non salvata
-        loadDraftFromStorage();
+        currentSex = appData.activeSex || 'F';
+        document.getElementById('sexSelect').value = currentSex;
 
-        updateThemeAndRecalculate();
-        checkWeightReminder();
+        loadProfileUI();
+        loadDraftFromStorage();
+        renderHistory();
+        renderSavedRecipes();
     };
 
-    // SALVATAGGIO AUTOMATICO IN BOZZA (Contro il refresh accidentale)
+    function switchProfile() {
+        currentSex = document.getElementById('sexSelect').value;
+        appData.activeSex = currentSex;
+        loadProfileUI();
+    }
+
+    function loadProfileUI() {
+        const prof = appData.profiles[currentSex];
+
+        if (currentSex === 'M') {
+            document.body.className = 'theme-male';
+            document.getElementById('waterLabelText').textContent = "Oggi ti sei idratato abbastanza?";
+        } else {
+            document.body.className = 'theme-female';
+            document.getElementById('waterLabelText').textContent = "Oggi ti sei idratata abbastanza?";
+        }
+
+        document.getElementById('age').value = prof.age;
+        document.getElementById('height').value = prof.height;
+        document.getElementById('activity').value = prof.activity;
+        document.getElementById('deficitSelect').value = prof.deficitPct;
+
+        if (prof.weightHistory.length > 0) {
+            document.getElementById('currentWeightInput').value = prof.weightHistory[prof.weightHistory.length - 1].weight;
+        } else {
+            document.getElementById('currentWeightInput').value = '';
+        }
+
+        calculateWaterTarget();
+        calculateTDEE();
+        checkWeightReminder();
+    }
+
+    function resetCurrentProfileData() {
+        const profileLabel = currentSex === 'M' ? "Uomo" : "Donna";
+        if (confirm(`Sei sicuro di voler azzerare le pesate e i parametri del Profilo ${profileLabel}? I tuoi pasti salvati e il diario non verranno cancellati.`)) {
+            appData.profiles[currentSex] = {
+                age: currentSex === 'M' ? 40 : 30,
+                height: currentSex === 'M' ? 175 : 165,
+                activity: 1.55,
+                deficitPct: 10,
+                targetKcal: 0,
+                weightHistory: []
+            };
+            saveDataToStorage();
+            loadProfileUI();
+            alert(`✅ Dati del Profilo ${profileLabel} azzerati con successo!`);
+        }
+    }
+
     function autoSaveDraft() {
         const draft = {
             currentDayFoods: currentDayFoods,
@@ -779,24 +832,10 @@
         }
     }
 
-    function updateThemeAndRecalculate() {
-        const sex = document.getElementById('sexSelect').value;
-        if (sex === 'M') {
-            document.body.className = 'theme-male';
-            document.getElementById('waterLabelText').textContent = "Oggi ti sei idratato abbastanza?";
-        } else {
-            document.body.className = 'theme-female';
-            document.getElementById('waterLabelText').textContent = "Oggi ti sei idratata abbastanza?";
-        }
-
-        calculateWaterTarget();
-        calculateTDEE();
-    }
-
     function calculateWaterTarget() {
-        const sex = document.getElementById('sexSelect').value;
-        const lastWeight = appData.weightHistory.length > 0 ? appData.weightHistory[appData.weightHistory.length - 1].weight : 60;
-        let target = sex === 'M' ? 2500 : 2000;
+        const prof = appData.profiles[currentSex];
+        const lastWeight = prof.weightHistory.length > 0 ? prof.weightHistory[prof.weightHistory.length - 1].weight : (currentSex === 'M' ? 75 : 60);
+        let target = currentSex === 'M' ? 2500 : 2000;
 
         if (lastWeight > 80) target += 300;
         else if (lastWeight < 55) target -= 200;
@@ -816,26 +855,25 @@
     }
 
     function calculateTDEE() {
-        const sex = document.getElementById('sexSelect').value;
         const age = parseFloat(document.getElementById('age').value) || 30;
         const height = parseFloat(document.getElementById('height').value) || 165;
         const actFactor = parseFloat(document.getElementById('activity').value) || 1.55;
         const deficitPct = parseFloat(document.getElementById('deficitSelect').value) || 0;
 
-        const currentWeight = appData.weightHistory.length > 0 ? appData.weightHistory[appData.weightHistory.length - 1].weight : 60;
+        const prof = appData.profiles[currentSex];
+        const currentWeight = prof.weightHistory.length > 0 ? prof.weightHistory[prof.weightHistory.length - 1].weight : (currentSex === 'M' ? 75 : 60);
 
         let bmr = (10 * currentWeight) + (6.25 * height) - (5 * age);
-        bmr = (sex === 'M') ? bmr + 5 : bmr - 161;
+        bmr = (currentSex === 'M') ? bmr + 5 : bmr - 161;
 
         const tdee = Math.round(bmr * actFactor);
         const targetKcal = Math.round(tdee * (1 - (deficitPct / 100)));
 
-        appData.targetKcal = targetKcal;
-        appData.sex = sex;
-        appData.age = age;
-        appData.height = height;
-        appData.activity = actFactor;
-        appData.deficitPct = deficitPct;
+        prof.age = age;
+        prof.height = height;
+        prof.activity = actFactor;
+        prof.deficitPct = deficitPct;
+        prof.targetKcal = targetKcal;
 
         saveDataToStorage();
 
@@ -844,7 +882,6 @@
         updateActivitiesSummary();
     }
 
-    // REGISTRAZIONE PESO
     function addWeightRecord() {
         const val = parseFloat(document.getElementById('currentWeightInput').value);
         if (!val || isNaN(val)) {
@@ -852,7 +889,8 @@
             return;
         }
 
-        appData.weightHistory.push({
+        const prof = appData.profiles[currentSex];
+        prof.weightHistory.push({
             date: new Date().toLocaleDateString('it-IT'),
             weight: val,
             timestamp: Date.now()
@@ -867,12 +905,15 @@
 
     function checkWeightReminder() {
         const banner = document.getElementById('weightReminderBanner');
-        if (appData.weightHistory.length === 0) {
+        const prof = appData.profiles[currentSex];
+
+        if (prof.weightHistory.length === 0) {
             banner.style.display = 'block';
+            drawWeightChart();
             return;
         }
 
-        const lastRecord = appData.weightHistory[appData.weightHistory.length - 1];
+        const lastRecord = prof.weightHistory[prof.weightHistory.length - 1];
         const diffDays = Math.floor((Date.now() - lastRecord.timestamp) / (1000 * 60 * 60 * 24));
         banner.style.display = (diffDays >= 14) ? 'block' : 'none';
         
@@ -883,14 +924,15 @@
         const canvas = document.getElementById('weightChart');
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
-        const history = appData.weightHistory;
+        const prof = appData.profiles[currentSex];
+        const history = prof.weightHistory;
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         if (history.length < 1) {
             ctx.fillStyle = "#64748b";
             ctx.font = "12px sans-serif";
-            ctx.fillText("Nessuna pesata registrata.", 20, 80);
+            ctx.fillText("Nessuna pesata registrata per questo profilo.", 20, 80);
             return;
         }
 
@@ -912,7 +954,7 @@
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.strokeStyle = document.body.classList.contains('theme-male') ? '#0284c7' : '#ec4899';
+        ctx.strokeStyle = currentSex === 'M' ? '#0284c7' : '#ec4899';
         ctx.lineWidth = 2;
 
         history.forEach((item, idx) => {
@@ -941,7 +983,6 @@
         });
     }
 
-    // ATTIVITÀ FISICHE MULTIPLE
     function addActivityToToday() {
         const select = document.getElementById('dailyActivitySelect');
         const text = select.options[select.selectedIndex].text;
@@ -953,7 +994,8 @@
             return;
         }
 
-        const currentWeight = appData.weightHistory.length > 0 ? appData.weightHistory[appData.weightHistory.length - 1].weight : 60;
+        const prof = appData.profiles[currentSex];
+        const currentWeight = prof.weightHistory.length > 0 ? prof.weightHistory[prof.weightHistory.length - 1].weight : (currentSex === 'M' ? 75 : 60);
         const kcal = Math.round((met * 3.5 * currentWeight / 200) * duration);
 
         currentDayActivities.push({
@@ -992,7 +1034,6 @@
         document.getElementById('activityBurnEstimate').textContent = `Totale Bruciato Oggi: ~${totKcal} kcal`;
     }
 
-    // DIARIO & RICERCA OTTIMIZZATA
     function searchFood(meal) {
         const inputEl = document.getElementById(`foodInput-${meal}`);
         const query = inputEl.value.toLowerCase().trim();
@@ -1100,7 +1141,7 @@
             `Totale Giornata: ${totKcal} kcal | P: ${totP.toFixed(1)}g | G: ${totG.toFixed(1)}g | C: ${totC.toFixed(1)}g`;
     }
 
-    function generateFeedback(sex, totalKcal, targetKcal, waterMl) {
+    function generateFeedback(totalKcal, targetKcal, waterMl) {
         const totBurned = currentDayActivities.reduce((acc, a) => acc + a.kcal, 0);
         const netKcal = totalKcal - totBurned;
         const target = targetKcal || 1850;
@@ -1124,7 +1165,7 @@
     function saveDay() {
         if (currentDayFoods.length === 0) return;
 
-        const sex = document.getElementById('sexSelect').value;
+        const prof = appData.profiles[currentSex];
         const totBurned = currentDayActivities.reduce((acc, a) => acc + a.kcal, 0);
 
         let totKcal = 0, totP = 0, totG = 0, totC = 0;
@@ -1140,10 +1181,11 @@
         let actSummary = currentDayActivities.length > 0 ? 
             currentDayActivities.map(a => `${a.name} (${a.duration} min)`).join(', ') + ` [~${totBurned} kcal]` : 'Nessuna';
 
-        const comment = generateFeedback(sex, totKcal, appData.targetKcal, currentWaterMl);
+        const comment = generateFeedback(totKcal, prof.targetKcal, currentWaterMl);
 
         const entry = {
             date: new Date().toLocaleDateString('it-IT'),
+            profileSex: currentSex,
             hasActivity: currentDayActivities.length > 0,
             activityText: actSummary,
             foodSummary: mealsSummary,
@@ -1158,7 +1200,6 @@
         appData.entries.unshift(entry);
         saveDataToStorage();
 
-        // Resetta la giornata e la bozza salvata
         currentDayFoods = [];
         currentDayActivities = [];
         currentWaterMl = 0;
@@ -1183,7 +1224,7 @@
         historyList.innerHTML = entries.map(item => `
             <div class="history-item">
                 <div class="history-header">
-                    <span class="history-date">${item.date}</span>
+                    <span class="history-date">${item.date} (${item.profileSex === 'M' ? '👨 Uomo' : '👩 Donna'})</span>
                     <span class="history-tag ${item.hasActivity ? 'tag-good' : 'tag-neutral'}">
                         ${item.hasActivity ? 'Attività' : 'Riposo'}
                     </span>
@@ -1227,7 +1268,6 @@
         localStorage.setItem('nutritionTrackerDataWeb', JSON.stringify(appData));
     }
 
-    // PASTI SALVATI & ALIMENTI
     function addIngredientToRecipeDraft() {
         const inputName = document.getElementById('foodInput-Recipe').value.trim();
         let grams = parseFloat(document.getElementById('foodGrams-Recipe').value);
@@ -1412,8 +1452,9 @@
                     FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...JSON.parse(parsed.customFoods)];
                 }
                 alert("✅ Backup ripristinato con successo!");
-                document.getElementById('sexSelect').value = appData.sex || 'F';
-                updateThemeAndRecalculate();
+                currentSex = appData.activeSex || 'F';
+                document.getElementById('sexSelect').value = currentSex;
+                loadProfileUI();
                 renderHistory();
                 renderSavedRecipes();
             } catch (err) {
