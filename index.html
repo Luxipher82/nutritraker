@@ -576,9 +576,9 @@
         </div>
 
         <div style="background: var(--bg-color); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
-            <h4 style="margin-bottom: 4px; color: var(--primary);">🔄 Sincronizzazione Automatic da GitHub</h4>
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">L'app carica in automatico il file `database.xlsx` da GitHub all'avvio.</p>
-            <button onclick="syncDatabaseFromGithub(true)" class="btn-secondary" style="width: 100%; padding: 6px; font-size: 0.8rem;">🔄 Forza Sincronizzazione GitHub</button>
+            <h4 style="margin-bottom: 4px; color: var(--primary);">🔄 Sincronizzazione da GitHub</h4>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">I cibi vengono caricati in automatico all'avvio dal repository.</p>
+            <button onclick="syncDatabaseFromGithub(true)" class="btn-secondary" style="width: 100%; padding: 6px; font-size: 0.8rem;">🔄 Sincronizza Ora da GitHub</button>
             
             <hr style="margin: 8px 0; border: 0; border-top: 1px dashed var(--border);">
 
@@ -678,8 +678,8 @@
 </div>
 
 <script>
-    // LINK DIRETTO AL FILE EXCEL SU GITHUB (Sostituisci TUO_UTENTE e TUO_REPO con i tuoi dati reali)
-    const GITHUB_EXCEL_URL = 'https://raw.githubusercontent.com/Luxipher82/nutritracker/main/database.xlsx';
+    // URL DIRETTO REALE AL VOSTRO FILE EXCEL
+    const GITHUB_EXCEL_URL = 'https://raw.githubusercontent.com/Luxipher82/nutritraker/main/database.xlsx';
 
     const BASE_FOOD_DATABASE = [
         { marca: 'Primia', nome: 'Yogurt Greco', kcal: 58, c: 4.5, g: 0.1, p: 10, porzione_g: 150 },
@@ -751,25 +751,24 @@
         syncDatabaseFromGithub(false);
     };
 
-    // FUNZIONE AUTO-SYNC DA GITHUB
+    // FUNZIONE AUTO-SYNC DA GITHUB (CON SUPPORTO ANTI-CACHE)
     function syncDatabaseFromGithub(showSuccessAlert) {
-        if (!GITHUB_EXCEL_URL || GITHUB_EXCEL_URL.includes('TUO_UTENTE')) {
-            if (showSuccessAlert) alert("Inserisci prima il tuo URL GitHub corretto nella riga 291 del codice.");
-            return;
-        }
-
-        fetch(GITHUB_EXCEL_URL + '?v=' + Date.now())
+        fetch(GITHUB_EXCEL_URL + '?v=' + Date.now(), { cache: "no-store" })
             .then(res => {
                 if (!res.ok) throw new Error("File Excel su GitHub non trovato");
                 return res.arrayBuffer();
             })
             .then(buffer => {
-                parseExcelArrayBuffer(buffer);
-                if (showSuccessAlert) alert("✅ Database aggiornato con successo da GitHub!");
+                const count = parseExcelArrayBuffer(buffer);
+                if (showSuccessAlert) {
+                    alert(`✅ Database aggiornato con successo da GitHub (${count} alimenti)!`);
+                }
             })
             .catch(err => {
                 console.log("Sincronizzazione GitHub ignorata:", err.message);
-                if (showSuccessAlert) alert("Impossibile scaricare l'Excel da GitHub. Verifica l'URL.");
+                if (showSuccessAlert) {
+                    alert("Impossibile scaricare l'Excel da GitHub. Assicurati che il file database.xlsx sia presente nel repository.");
+                }
             });
     }
 
@@ -788,7 +787,7 @@
             }
         }
 
-        if (headerIndex === -1) return;
+        if (headerIndex === -1) return 0;
 
         const headers = rows[headerIndex].map(h => String(h).trim().toLowerCase());
 
@@ -820,6 +819,8 @@
             FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...importedFoods];
             localStorage.setItem('customFoodsDatabase', JSON.stringify(importedFoods));
         }
+
+        return importedFoods.length;
     }
 
     function switchProfile() {
@@ -1476,8 +1477,8 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
-                parseExcelArrayBuffer(e.target.result);
-                alert(`🎉 Importati con successo gli alimenti dal file locale!`);
+                const count = parseExcelArrayBuffer(e.target.result);
+                alert(`🎉 Importati con successo ${count} alimenti dal file locale!`);
                 fileInput.value = '';
                 toggleDrawer('addFoodDrawer');
             } catch (err) {
