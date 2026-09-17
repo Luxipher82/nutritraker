@@ -142,6 +142,14 @@
             border-radius: 6px;
         }
 
+        .btn-edit {
+            background-color: #f59e0b;
+            color: white;
+            padding: 4px 8px;
+            font-size: 0.75rem;
+            border-radius: 6px;
+        }
+
         .row {
             display: flex;
             gap: 8px;
@@ -860,7 +868,9 @@
     }
 
     function autoSaveDraft() {
+        const todayStr = new Date().toLocaleDateString('it-IT');
         const draft = {
+            date: todayStr,
             currentDayFoods: currentDayFoods,
             currentDayActivities: currentDayActivities,
             currentWaterMl: currentWaterMl
@@ -870,15 +880,23 @@
 
     function loadDraftFromStorage() {
         const draftStr = localStorage.getItem('todayDraftNutriTracker');
+        const todayStr = new Date().toLocaleDateString('it-IT');
+
         if (draftStr) {
             try {
                 const draft = JSON.parse(draftStr);
-                currentDayFoods = draft.currentDayFoods || [];
-                currentDayActivities = draft.currentDayActivities || [];
-                currentWaterMl = draft.currentWaterMl || 0;
-                updateTodaySummary();
-                updateActivitiesSummary();
-                updateWaterDisplay();
+                // Se la bozza appartiene a oggi, la ripristina
+                if (draft.date === todayStr) {
+                    currentDayFoods = draft.currentDayFoods || [];
+                    currentDayActivities = draft.currentDayActivities || [];
+                    currentWaterMl = draft.currentWaterMl || 0;
+                    updateTodaySummary();
+                    updateActivitiesSummary();
+                    updateWaterDisplay();
+                } else {
+                    // Altrimenti fa il reset automatico per la nuova giornata
+                    localStorage.removeItem('todayDraftNutriTracker');
+                }
             } catch(e){}
         }
     }
@@ -1248,9 +1266,11 @@
             currentDayActivities.map(a => `${a.name} (${a.duration} min)`).join(', ') + ` [~${totBurned} kcal]` : 'Nessuna';
 
         const comment = generateFeedback(totKcal, prof.targetKcal, currentWaterMl);
+        const todayDateStr = new Date().toLocaleDateString('it-IT');
 
-        const entry = {
-            date: new Date().toLocaleDateString('it-IT'),
+        const newEntry = {
+            id: Date.now(),
+            date: todayDateStr,
             profileSex: currentSex,
             hasActivity: currentDayActivities.length > 0,
             activityText: actSummary,
@@ -1260,20 +1280,24 @@
             totalProt: totP.toFixed(1),
             totalFat: totG.toFixed(1),
             totalCarb: totC.toFixed(1),
-            comment: comment
+            comment: comment,
+            rawFoods: [...currentDayFoods],
+            rawActivities: [...currentDayActivities]
         };
 
-        appData.entries.unshift(entry);
+        // Verifica se esiste già la voce di oggi per questo profilo
+        const existingIdx = appData.entries.findIndex(e => e.date === todayDateStr && e.profileSex === currentSex);
+
+        if (existingIdx !== -1) {
+            // Aggiorna la voce esistente nello storico
+            appData.entries[existingIdx] = newEntry;
+        } else {
+            // Aggiungi una nuova voce nello storico
+            appData.entries.unshift(newEntry);
+        }
+
         saveDataToStorage();
-
-        currentDayFoods = [];
-        currentDayActivities = [];
-        currentWaterMl = 0;
-        localStorage.removeItem('todayDraftNutriTracker');
-
-        updateWaterDisplay();
-        updateTodaySummary();
-        updateActivitiesSummary();
+        autoSaveDraft();
         renderHistory();
         toggleDrawer('historyDrawer');
     }
@@ -1287,13 +1311,17 @@
             return;
         }
 
-        historyList.innerHTML = entries.map(item => `
+        historyList.innerHTML = entries.map((item, idx) => `
             <div class="history-item">
                 <div class="history-header">
                     <span class="history-date">${item.date} (${item.profileSex === 'M' ? '👨 Uomo' : '👩 Donna'})</span>
-                    <span class="history-tag ${item.hasActivity ? 'tag-good' : 'tag-neutral'}">
-                        ${item.hasActivity ? 'Attività' : 'Riposo'}
-                    </span>
+                    <div style="display:flex; gap:6px; align-items:center;">
+                        <span class="history-tag ${item.hasActivity ? 'tag-good' : 'tag-neutral'}">
+                            ${item.hasActivity ? 'Attività' : 'Riposo'}
+                        </span>
+                        <button class="btn-edit" onclick="editHistoryEntry(${idx})">✏️ Modifica</button>
+                        <button class="btn-danger" onclick="deleteHistoryEntry(${idx})">🗑️ Elimina</button>
+                    </div>
                 </div>
                 <div class="history-details" style="margin-top:4px; line-height: 1.35;">
                     🏃‍♂️ <strong>Attività:</strong> ${item.activityText}<br>
@@ -1306,8 +1334,43 @@
         `).join('');
     }
 
+    function editHistoryEntry(idx) {
+        const item = appData.entries[idx];
+        if (!item) return;
+
+        if (confirm(`Vuoi ripristinare i dati della giornata del ${item.date} nel diario principale per modificarli?`)) {
+            // Ripristina profilo e dati nel diario attivo
+            currentSex = item.profileSex;
+            appData.activeSex = currentSex;
+            document.getElementById('sexSelect').value = currentSex;
+            loadProfileUI();
+
+            currentDayFoods = item.rawFoods ? [...item.rawFoods] : [];
+            currentDayActivities = item.rawActivities ? [...item.rawActivities] : [];
+            currentWaterMl = item.waterMl || 0;
+
+            updateTodaySummary();
+            updateActivitiesSummary();
+            updateWaterDisplay();
+            autoSaveDraft();
+
+            toggleDrawer('historyDrawer');
+        }
+    }
+
+    function deleteHistoryEntry(idx) {
+        const item = appData.entries[idx];
+        if (!item) return;
+
+        if (confirm(`Sei sicuro di voler eliminare definitivamente la registrazione del ${item.date}?`)) {
+            appData.entries.splice(idx, 1);
+            saveDataToStorage();
+            renderHistory();
+        }
+    }
+
     function clearHistory() {
-        if (confirm("Sei sicuro di voler cancellare lo storico delle giornate?")) {
+        if (confirm("Sei sicuro di voler cancellare lo storico di tutte le giornate?")) {
             appData.entries = [];
             saveDataToStorage();
             renderHistory();
