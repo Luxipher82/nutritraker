@@ -231,6 +231,16 @@
             border-bottom: none;
         }
 
+        .meal-subtotal {
+            font-size: 0.74rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-top: 6px;
+            padding-top: 4px;
+            border-top: 1px solid var(--bg-color);
+            text-align: right;
+        }
+
         .water-box {
             display: flex;
             align-items: center;
@@ -424,6 +434,7 @@
                 <button onclick="addFoodToMeal('Colazione')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Colazione" class="meal-items"></ul>
+            <div id="subtotal-Colazione" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
         </div>
 
         <!-- 🥗 PRANZO -->
@@ -441,6 +452,7 @@
                 <button onclick="addFoodToMeal('Pranzo')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Pranzo" class="meal-items"></ul>
+            <div id="subtotal-Pranzo" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
         </div>
 
         <!-- 🍽️ CENA -->
@@ -458,6 +470,7 @@
                 <button onclick="addFoodToMeal('Cena')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Cena" class="meal-items"></ul>
+            <div id="subtotal-Cena" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
         </div>
 
         <!-- 🍎 SPUNTINO -->
@@ -475,6 +488,7 @@
                 <button onclick="addFoodToMeal('Snack')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Snack" class="meal-items"></ul>
+            <div id="subtotal-Snack" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
         </div>
 
         <div id="totals" style="font-size: 0.82rem; font-weight: 600; margin-top: 8px; background: #fff; padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
@@ -885,7 +899,6 @@
         if (draftStr) {
             try {
                 const draft = JSON.parse(draftStr);
-                // Se la bozza appartiene a oggi, la ripristina
                 if (draft.date === todayStr) {
                     currentDayFoods = draft.currentDayFoods || [];
                     currentDayActivities = draft.currentDayActivities || [];
@@ -894,7 +907,6 @@
                     updateActivitiesSummary();
                     updateWaterDisplay();
                 } else {
-                    // Altrimenti fa il reset automatico per la nuova giornata
                     localStorage.removeItem('todayDraftNutriTracker');
                 }
             } catch(e){}
@@ -1200,25 +1212,43 @@
     }
 
     function updateTodaySummary() {
-        ['Colazione', 'Pranzo', 'Cena', 'Snack'].forEach(meal => {
+        const meals = ['Colazione', 'Pranzo', 'Cena', 'Snack'];
+        
+        // Reset liste
+        meals.forEach(meal => {
             document.getElementById(`list-${meal}`).innerHTML = '';
         });
 
         let totKcal = 0, totP = 0, totG = 0, totC = 0;
 
-        currentDayFoods.forEach((item) => {
-            totKcal += item.kcal;
-            totP += item.p;
-            totG += item.g;
-            totC += item.c;
+        // Calcolo sub-totali per singolo pasto e totale generale
+        meals.forEach(meal => {
+            const mealItems = currentDayFoods.filter(f => f.meal === meal);
+            let mKcal = 0, mP = 0, mG = 0, mC = 0;
 
-            const list = document.getElementById(`list-${item.meal}`);
-            const li = document.createElement('li');
-            li.innerHTML = `
-                <span>${item.nome} (${item.grams}g) - <strong>${item.kcal} kcal</strong></span>
-                <button type="button" class="btn-danger" onclick="removeFood(${item.id})">Elimina</button>
-            `;
-            list.appendChild(li);
+            mealItems.forEach(item => {
+                mKcal += item.kcal;
+                mP += item.p;
+                mG += item.g;
+                mC += item.c;
+
+                totKcal += item.kcal;
+                totP += item.p;
+                totG += item.g;
+                totC += item.c;
+
+                const list = document.getElementById(`list-${item.meal}`);
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${item.nome} (${item.grams}g) - <strong>${item.kcal} kcal</strong></span>
+                    <button type="button" class="btn-danger" onclick="removeFood(${item.id})">Elimina</button>
+                `;
+                list.appendChild(li);
+            });
+
+            // Aggiorna sub-totale per il pasto
+            document.getElementById(`subtotal-${meal}`).textContent = 
+                `Pasto: ${mKcal} kcal | P: ${mP.toFixed(1)}g | G: ${mG.toFixed(1)}g | C: ${mC.toFixed(1)}g`;
         });
 
         document.getElementById('totals').textContent = 
@@ -1285,14 +1315,11 @@
             rawActivities: [...currentDayActivities]
         };
 
-        // Verifica se esiste già la voce di oggi per questo profilo
         const existingIdx = appData.entries.findIndex(e => e.date === todayDateStr && e.profileSex === currentSex);
 
         if (existingIdx !== -1) {
-            // Aggiorna la voce esistente nello storico
             appData.entries[existingIdx] = newEntry;
         } else {
-            // Aggiungi una nuova voce nello storico
             appData.entries.unshift(newEntry);
         }
 
@@ -1339,7 +1366,6 @@
         if (!item) return;
 
         if (confirm(`Vuoi ripristinare i dati della giornata del ${item.date} nel diario principale per modificarli?`)) {
-            // Ripristina profilo e dati nel diario attivo
             currentSex = item.profileSex;
             appData.activeSex = currentSex;
             document.getElementById('sexSelect').value = currentSex;
