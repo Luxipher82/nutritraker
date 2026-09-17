@@ -576,10 +576,15 @@
         </div>
 
         <div style="background: var(--bg-color); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
-            <h4 style="margin-bottom: 4px; color: var(--primary);">📂 Carica da Tabella Excel</h4>
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">Seleziona il tuo file .xlsx per aggiornare il database.</p>
+            <h4 style="margin-bottom: 4px; color: var(--primary);">🔄 Sincronizzazione Automatic da GitHub</h4>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">L'app carica in automatico il file `database.xlsx` da GitHub all'avvio.</p>
+            <button onclick="syncDatabaseFromGithub(true)" class="btn-secondary" style="width: 100%; padding: 6px; font-size: 0.8rem;">🔄 Forza Sincronizzazione GitHub</button>
+            
+            <hr style="margin: 8px 0; border: 0; border-top: 1px dashed var(--border);">
+
+            <h4 style="margin-bottom: 4px; color: var(--primary);">📂 Carica File Locale (Opzionale)</h4>
             <input type="file" id="excelFileInput" accept=".xlsx, .xls" style="font-size: 0.8rem;">
-            <button onclick="importExcelDatabase()" class="btn-secondary" style="width: 100%; margin-top: 6px; padding: 6px; font-size: 0.8rem;">Importa Foglio Excel</button>
+            <button onclick="importExcelDatabase()" class="btn-secondary" style="width: 100%; margin-top: 6px; padding: 6px; font-size: 0.8rem;">Importa Manualmente File Locale</button>
         </div>
 
         <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
@@ -673,6 +678,9 @@
 </div>
 
 <script>
+    // LINK DIRETTO AL FILE EXCEL SU GITHUB (Sostituisci TUO_UTENTE e TUO_REPO con i tuoi dati reali)
+    const GITHUB_EXCEL_URL = 'https://raw.githubusercontent.com/Luxipher82/nutritracker/main/database.xlsx';
+
     const BASE_FOOD_DATABASE = [
         { marca: 'Primia', nome: 'Yogurt Greco', kcal: 58, c: 4.5, g: 0.1, p: 10, porzione_g: 150 },
         { marca: 'Primia', nome: 'Pasta', kcal: 307, c: 61, g: 1.1, p: 12, porzione_g: 80 },
@@ -738,7 +746,81 @@
         loadDraftFromStorage();
         renderHistory();
         renderSavedRecipes();
+
+        // SCARICA AUTOMATICAMENTE L'EXCEL DA GITHUB ALL'AVVIO
+        syncDatabaseFromGithub(false);
     };
+
+    // FUNZIONE AUTO-SYNC DA GITHUB
+    function syncDatabaseFromGithub(showSuccessAlert) {
+        if (!GITHUB_EXCEL_URL || GITHUB_EXCEL_URL.includes('TUO_UTENTE')) {
+            if (showSuccessAlert) alert("Inserisci prima il tuo URL GitHub corretto nella riga 291 del codice.");
+            return;
+        }
+
+        fetch(GITHUB_EXCEL_URL + '?v=' + Date.now())
+            .then(res => {
+                if (!res.ok) throw new Error("File Excel su GitHub non trovato");
+                return res.arrayBuffer();
+            })
+            .then(buffer => {
+                parseExcelArrayBuffer(buffer);
+                if (showSuccessAlert) alert("✅ Database aggiornato con successo da GitHub!");
+            })
+            .catch(err => {
+                console.log("Sincronizzazione GitHub ignorata:", err.message);
+                if (showSuccessAlert) alert("Impossibile scaricare l'Excel da GitHub. Verifica l'URL.");
+            });
+    }
+
+    function parseExcelArrayBuffer(dataBuffer) {
+        const data = new Uint8Array(dataBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+        let headerIndex = -1;
+        for (let i = 0; i < rows.length; i++) {
+            const rowStr = rows[i].join(" ").toLowerCase();
+            if (rowStr.includes("alimento") || rowStr.includes("nome")) {
+                headerIndex = i;
+                break;
+            }
+        }
+
+        if (headerIndex === -1) return;
+
+        const headers = rows[headerIndex].map(h => String(h).trim().toLowerCase());
+
+        const importedFoods = [];
+        for (let i = headerIndex + 1; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.every(val => val === "")) continue;
+
+            let item = {};
+            headers.forEach((header, idx) => {
+                if (header) item[header] = row[idx] !== undefined ? row[idx] : "";
+            });
+
+            const nomeStr = String(item['alimento'] || item['nome'] || '').trim();
+            if (nomeStr !== "") {
+                importedFoods.push({
+                    marca: item['marca'] || '',
+                    nome: nomeStr,
+                    kcal: parseFloat(item['kcal']) || 0,
+                    c: parseFloat(item['carboidrati']) || 0,
+                    g: parseFloat(item['grassi']) || 0,
+                    p: parseFloat(item['proteine']) || 0,
+                    porzione_g: parseFloat(item['peso per porzione']) || 100
+                });
+            }
+        }
+
+        if (importedFoods.length > 0) {
+            FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...importedFoods];
+            localStorage.setItem('customFoodsDatabase', JSON.stringify(importedFoods));
+        }
+    }
 
     function switchProfile() {
         currentSex = document.getElementById('sexSelect').value;
@@ -855,7 +937,6 @@
         prof.height = height;
         prof.activity = actFactor;
         prof.deficitPct = deficitPct;
-        prof.targetKcal = targetKcal;
 
         saveDataToStorage();
 
@@ -1016,7 +1097,6 @@
         document.getElementById('activityBurnEstimate').textContent = `Totale Bruciato Oggi: ~${totKcal} kcal`;
     }
 
-    // RICERCA CIBO ROBUSTA
     function searchFood(meal) {
         const inputEl = document.getElementById(`foodInput-${meal}`);
         const query = inputEl.value.toLowerCase().trim();
@@ -1384,7 +1464,6 @@
         }
     }
 
-    // IMPORTAZIONE EXCEL TOLLERANTE
     function importExcelDatabase() {
         const fileInput = document.getElementById('excelFileInput');
         const file = fileInput.files[0];
@@ -1397,64 +1476,10 @@
         const reader = new FileReader();
         reader.onload = function(e) {
             try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
-
-                const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-
-                let headerIndex = -1;
-                for (let i = 0; i < rows.length; i++) {
-                    const rowStr = rows[i].join(" ").toLowerCase();
-                    if (rowStr.includes("alimento") || rowStr.includes("nome")) {
-                        headerIndex = i;
-                        break;
-                    }
-                }
-
-                if (headerIndex === -1) {
-                    alert("Impossibile trovare la riga con la colonna 'alimento' nel file Excel.");
-                    return;
-                }
-
-                const headers = rows[headerIndex].map(h => String(h).trim().toLowerCase());
-
-                const importedFoods = [];
-                for (let i = headerIndex + 1; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (!row || row.every(val => val === "")) continue;
-
-                    let item = {};
-                    headers.forEach((header, idx) => {
-                        if (header) item[header] = row[idx] !== undefined ? row[idx] : "";
-                    });
-
-                    const nomeStr = String(item['alimento'] || item['nome'] || '').trim();
-                    if (nomeStr !== "") {
-                        importedFoods.push({
-                            marca: item['marca'] || '',
-                            nome: nomeStr,
-                            kcal: parseFloat(item['kcal']) || 0,
-                            c: parseFloat(item['carboidrati']) || 0,
-                            g: parseFloat(item['grassi']) || 0,
-                            p: parseFloat(item['proteine']) || 0,
-                            porzione_g: parseFloat(item['peso per porzione']) || 100
-                        });
-                    }
-                }
-
-                if (importedFoods.length === 0) {
-                    alert("Nessun alimento valido trovato nel file Excel.");
-                    return;
-                }
-
-                FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...importedFoods];
-                localStorage.setItem('customFoodsDatabase', JSON.stringify(importedFoods));
-
-                alert(`🎉 Importati con successo ${importedFoods.length} alimenti dal file Excel!`);
+                parseExcelArrayBuffer(e.target.result);
+                alert(`🎉 Importati con successo gli alimenti dal file locale!`);
                 fileInput.value = '';
                 toggleDrawer('addFoodDrawer');
-
             } catch (err) {
                 alert("Errore durante la lettura del file Excel: " + err.message);
             }
