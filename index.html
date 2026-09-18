@@ -474,7 +474,7 @@
 
 <div class="container">
 
-    <!-- NAV BAR ICONE (PULITA SENZA TESTO DI BENVENUTO FISSO) -->
+    <!-- NAV BAR ICONE -->
     <div class="icon-nav-bar">
         <div>
             <h2>NutriTracker</h2>
@@ -892,13 +892,21 @@
 
         syncDatabaseFromGithub(false);
 
-        // Registrazione Service Worker per PWA
+        // AUTO-AGGIORNAMENTO SERVICE WORKER PER TUTTI I DISPOSITIVI
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then(() => {
-                const urlParams = new URLSearchParams(window.location.search);
-                if (urlParams.get('action') === 'add_water') {
-                    addWater(250);
-                }
+            navigator.serviceWorker.register('sw.js').then(reg => {
+                // Forza il controllo di una nuova versione del file sw.js su GitHub ad ogni avvio
+                reg.update();
+
+                reg.onupdatefound = () => {
+                    const installingWorker = reg.installing;
+                    installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                            // Trovata nuova versione: ricarica la pagina per applicarla
+                            window.location.reload();
+                        }
+                    };
+                };
             }).catch(() => {});
         }
 
@@ -1553,7 +1561,7 @@
         }
 
         saveDataToStorage();
-        autoSaveDraft(); // Salva e mantiene visibili i dati della giornata corrente
+        autoSaveDraft();
         renderHistory();
         toggleDrawer('historyDrawer');
     }
