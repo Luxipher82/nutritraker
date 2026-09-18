@@ -241,7 +241,20 @@
             margin-top: 6px;
             padding-top: 4px;
             border-top: 1px solid var(--bg-color);
-            text-align: right;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .extra-details-box {
+            display: none;
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 6px 10px;
+            margin-top: 6px;
+            font-size: 0.74rem;
+            color: var(--text);
         }
 
         .water-box {
@@ -440,7 +453,13 @@
                 <button onclick="addFoodToMeal('Colazione')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Colazione" class="meal-items"></ul>
-            <div id="subtotal-Colazione" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
+            <div class="meal-subtotal">
+                <span id="subtext-Colazione">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</span>
+                <button class="btn-secondary" onclick="toggleMealExtra('Colazione')" style="width: auto; font-size: 0.68rem; padding: 2px 6px;">🔍 Dettagli Extra</button>
+            </div>
+            <div id="extradetails-Colazione" class="extra-details-box">
+                Zuccheri: 0g | Saturi: 0g | Sale: 0g
+            </div>
         </div>
 
         <!-- 🥗 PRANZO -->
@@ -458,7 +477,13 @@
                 <button onclick="addFoodToMeal('Pranzo')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Pranzo" class="meal-items"></ul>
-            <div id="subtotal-Pranzo" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
+            <div class="meal-subtotal">
+                <span id="subtext-Pranzo">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</span>
+                <button class="btn-secondary" onclick="toggleMealExtra('Pranzo')" style="width: auto; font-size: 0.68rem; padding: 2px 6px;">🔍 Dettagli Extra</button>
+            </div>
+            <div id="extradetails-Pranzo" class="extra-details-box">
+                Zuccheri: 0g | Saturi: 0g | Sale: 0g
+            </div>
         </div>
 
         <!-- 🍽️ CENA -->
@@ -476,7 +501,13 @@
                 <button onclick="addFoodToMeal('Cena')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Cena" class="meal-items"></ul>
-            <div id="subtotal-Cena" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
+            <div class="meal-subtotal">
+                <span id="subtext-Cena">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</span>
+                <button class="btn-secondary" onclick="toggleMealExtra('Cena')" style="width: auto; font-size: 0.68rem; padding: 2px 6px;">🔍 Dettagli Extra</button>
+            </div>
+            <div id="extradetails-Cena" class="extra-details-box">
+                Zuccheri: 0g | Saturi: 0g | Sale: 0g
+            </div>
         </div>
 
         <!-- 🍎 SPUNTINO -->
@@ -494,11 +525,24 @@
                 <button onclick="addFoodToMeal('Snack')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Snack" class="meal-items"></ul>
-            <div id="subtotal-Snack" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
+            <div class="meal-subtotal">
+                <span id="subtext-Snack">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</span>
+                <button class="btn-secondary" onclick="toggleMealExtra('Snack')" style="width: auto; font-size: 0.68rem; padding: 2px 6px;">🔍 Dettagli Extra</button>
+            </div>
+            <div id="extradetails-Snack" class="extra-details-box">
+                Zuccheri: 0g | Saturi: 0g | Sale: 0g
+            </div>
         </div>
 
-        <div id="totals" style="font-size: 0.82rem; font-weight: 600; margin-top: 8px; background: #fff; padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
-            Totale Giornata: 0 kcal | P: 0g | G: 0g | C: 0g
+        <!-- RIEPILOGO GIORNATA -->
+        <div style="font-size: 0.82rem; font-weight: 600; margin-top: 8px; background: #fff; padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
+            <div id="totals" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Totale Giornata: 0 kcal | P: 0g | G: 0g | C: 0g</span>
+                <button class="btn-secondary" onclick="toggleDailyExtra()" style="width: auto; font-size: 0.68rem; padding: 2px 6px;">🔍 Dettagli Extra</button>
+            </div>
+            <div id="extradetails-Daily" class="extra-details-box">
+                Zuccheri totali: 0g | Saturi totali: 0g | Sale totale: 0g
+            </div>
         </div>
 
         <hr style="margin: 12px 0; border: 0; border-top: 1px solid var(--border);">
@@ -631,14 +675,29 @@
         </div>
         <div class="row">
             <div class="form-group">
+                <label for="newFoodC">Carboidrati (g)</label>
+                <input type="number" id="newFoodC" step="0.1" placeholder="0.5">
+            </div>
+            <div class="form-group">
+                <label for="newFoodZ">di cui Zuccheri (g)</label>
+                <input type="number" id="newFoodZ" step="0.1" placeholder="0.2">
+            </div>
+        </div>
+        <div class="row">
+            <div class="form-group">
                 <label for="newFoodG">Grassi (g)</label>
                 <input type="number" id="newFoodG" step="0.1" placeholder="28">
             </div>
             <div class="form-group">
-                <label for="newFoodC">Carboidrati (g)</label>
-                <input type="number" id="newFoodC" step="0.1" placeholder="0.5">
+                <label for="newFoodSaturi">di cui Saturi (g)</label>
+                <input type="number" id="newFoodSaturi" step="0.1" placeholder="12">
             </div>
         </div>
+        <div class="form-group">
+            <label for="newFoodSale">Sale (g)</label>
+            <input type="number" id="newFoodSale" step="0.01" placeholder="0.1">
+        </div>
+
         <button onclick="addNewFoodToDatabase()" style="width: 100%; margin-top: 6px; padding: 8px;">Salva Alimento</button>
 
         <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
@@ -706,24 +765,24 @@
     const GITHUB_EXCEL_URL = 'https://raw.githubusercontent.com/Luxipher82/nutritraker/main/database.xlsx';
 
     const BASE_FOOD_DATABASE = [
-        { marca: 'Primia', nome: 'Yogurt Greco', kcal: 58, c: 4.5, g: 0.1, p: 10, porzione_g: 150 },
-        { marca: 'Primia', nome: 'Pasta', kcal: 307, c: 61, g: 1.1, p: 12, porzione_g: 80 },
-        { marca: '', nome: 'Olio Extravergine', kcal: 900, c: 0, g: 100, p: 0, porzione_g: 10 },
-        { marca: 'Santa Lucia', nome: 'Ricotta Light', kcal: 112, c: 5.5, g: 6, p: 9, porzione_g: 90 },
-        { marca: 'Del Zoppo', nome: 'Bresaola', kcal: 165, c: 0.5, g: 3, p: 34, porzione_g: 50 },
-        { marca: 'Mare Blù', nome: 'Tonno Vero Naturale', kcal: 103, c: 0, g: 0.8, p: 24, porzione_g: 56 },
-        { marca: 'Rizzoli', nome: 'Sgombro', kcal: 119, c: 0, g: 3, p: 23, porzione_g: 90 },
-        { marca: 'Mulino Bianco', nome: 'Pane a Fette Integrale', kcal: 275, c: 38, g: 6.8, p: 11, porzione_g: 23 },
-        { marca: 'Primia', nome: 'Riso Parboiled', kcal: 349, c: 78, g: 0.8, p: 6.9, porzione_g: 80 },
-        { marca: 'Primia', nome: 'Riso Basmati', kcal: 354, c: 80, g: 0.4, p: 6.7, porzione_g: 80 },
-        { marca: '', nome: 'Petto di Pollo', kcal: 96, c: 0, g: 0.6, p: 22, porzione_g: 150 },
-        { marca: 'Ferrarini', nome: 'Prosciutto Cotto', kcal: 158, c: 0.4, g: 8.5, p: 19.6, porzione_g: 60 },
-        { marca: 'Fiorentini', nome: 'Avena', kcal: 403, c: 59, g: 6.3, p: 21, porzione_g: 40 },
-        { marca: 'Filippi', nome: 'Avena', kcal: 364, c: 60, g: 6.2, p: 12, porzione_g: 40 },
-        { marca: 'Mila', nome: 'Latte Parzialmente Scremato No Lattosio', kcal: 47, c: 4.9, g: 1.6, p: 3.2, porzione_g: 200 },
-        { marca: '', nome: 'Pane Integrale', kcal: 253, c: 55.4, g: 1, p: 9, porzione_g: 50 },
-        { marca: '', nome: 'Banana', kcal: 93, c: 20, g: 0.2, p: 1.2, porzione_g: 120 },
-        { marca: '', nome: 'Mela', kcal: 52, c: 14, g: 0.2, p: 0.3, porzione_g: 150 }
+        { marca: 'Primia', nome: 'Yogurt Greco', kcal: 58, c: 4.5, z: 4.0, g: 0.1, saturi: 0.0, p: 10, sale: 0.05, porzione_g: 150 },
+        { marca: 'Primia', nome: 'Pasta', kcal: 307, c: 61, z: 2.0, g: 1.1, saturi: 0.2, p: 12, sale: 0.01, porzione_g: 80 },
+        { marca: '', nome: 'Olio Extravergine', kcal: 900, c: 0, z: 0, g: 100, saturi: 14, p: 0, sale: 0, porzione_g: 10 },
+        { marca: 'Santa Lucia', nome: 'Ricotta Light', kcal: 112, c: 5.5, z: 4.0, g: 6, saturi: 4.0, p: 9, sale: 0.2, porzione_g: 90 },
+        { marca: 'Del Zoppo', nome: 'Bresaola', kcal: 165, c: 0.5, z: 0.2, g: 3, saturi: 1.2, p: 34, sale: 2.5, porzione_g: 50 },
+        { marca: 'Mare Blù', nome: 'Tonno Vero Naturale', kcal: 103, c: 0, z: 0, g: 0.8, saturi: 0.2, p: 24, sale: 0.8, porzione_g: 56 },
+        { marca: 'Rizzoli', nome: 'Sgombro', kcal: 119, c: 0, z: 0, g: 3, saturi: 0.6, p: 23, sale: 0.9, porzione_g: 90 },
+        { marca: 'Mulino Bianco', nome: 'Pane a Fette Integrale', kcal: 275, c: 38, z: 4.5, g: 6.8, saturi: 1.0, p: 11, sale: 1.1, porzione_g: 23 },
+        { marca: 'Primia', nome: 'Riso Parboiled', kcal: 349, c: 78, z: 0.5, g: 0.8, saturi: 0.2, p: 6.9, sale: 0.01, porzione_g: 80 },
+        { marca: 'Primia', nome: 'Riso Basmati', kcal: 354, c: 80, z: 0.2, g: 0.4, saturi: 0.1, p: 6.7, sale: 0.01, porzione_g: 80 },
+        { marca: '', nome: 'Petto di Pollo', kcal: 96, c: 0, z: 0, g: 0.6, saturi: 0.2, p: 22, sale: 0.1, porzione_g: 150 },
+        { marca: 'Ferrarini', nome: 'Prosciutto Cotto', kcal: 158, c: 0.4, z: 0.2, g: 8.5, saturi: 3.1, p: 19.6, sale: 2.1, porzione_g: 60 },
+        { marca: 'Fiorentini', nome: 'Avena', kcal: 403, c: 59, z: 1.0, g: 6.3, saturi: 1.1, p: 21, sale: 0.02, porzione_g: 40 },
+        { marca: 'Filippi', nome: 'Avena', kcal: 364, c: 60, z: 1.2, g: 6.2, saturi: 1.0, p: 12, sale: 0.02, porzione_g: 40 },
+        { marca: 'Mila', nome: 'Latte Parzialmente Scremato No Lattosio', kcal: 47, c: 4.9, z: 4.9, g: 1.6, saturi: 1.0, p: 3.2, sale: 0.1, porzione_g: 200 },
+        { marca: '', nome: 'Pane Integrale', kcal: 253, c: 55.4, z: 3.0, g: 1, saturi: 0.2, p: 9, sale: 1.2, porzione_g: 50 },
+        { marca: '', nome: 'Banana', kcal: 93, c: 20, z: 12, g: 0.2, saturi: 0.1, p: 1.2, sale: 0, porzione_g: 120 },
+        { marca: '', nome: 'Mela', kcal: 52, c: 14, z: 10, g: 0.2, saturi: 0.0, p: 0.3, sale: 0, porzione_g: 150 }
     ];
 
     let FOOD_DATABASE = [...BASE_FOOD_DATABASE];
@@ -871,9 +930,12 @@
                     nome: nomeStr,
                     kcal: parseFloat(item['kcal']) || 0,
                     c: parseFloat(item['carboidrati']) || 0,
+                    z: parseFloat(item['zuccheri']) || 0,
                     g: parseFloat(item['grassi']) || 0,
+                    saturi: parseFloat(item['saturi']) || 0,
                     p: parseFloat(item['proteine']) || 0,
-                    porzione_g: parseFloat(item['peso per porzione']) || 100
+                    sale: parseFloat(item['sale']) || 0,
+                    porzione_g: parseFloat(item['peso per porzione'] || item['porzione_g']) || 100
                 });
             }
         }
@@ -1189,7 +1251,7 @@
 
         const matches = FOOD_DATABASE.filter(f => {
             const marcaStr = String(f.marca || f['marca'] || '').toLowerCase();
-            const nomeStr = String(f.nome || f['alimento'] || f['nome'] || '').toLowerCase();
+            const nomeStr = String(f.nome || f['alimento'] || '').toLowerCase();
             const fullText = (marcaStr + " " + nomeStr).trim();
             return fullText.includes(query) || nomeStr.includes(query) || marcaStr.includes(query);
         });
@@ -1197,7 +1259,7 @@
         if (matches.length > 0) {
             resultsDiv.innerHTML = matches.map(f => {
                 const marca = f.marca || f['marca'] || '';
-                const nome = f.nome || f['alimento'] || f['nome'] || 'Alimento';
+                const nome = f.nome || f['alimento'] || 'Alimento';
                 const label = (marca && marca !== 'WEB') ? `${nome} (${marca})` : nome;
                 const portion = f.porzione_g || f['peso per porzione'] || 100;
                 return `<div class="autocomplete-item" onclick="selectFoodForMeal('${meal}', '${label.replace(/'/g, "\\'")}', ${portion})">${label}</div>`;
@@ -1222,7 +1284,7 @@
 
         const match = FOOD_DATABASE.find(f => {
             const marcaStr = String(f.marca || f['marca'] || '').toLowerCase();
-            const nomeStr = String(f.nome || f['alimento'] || f['nome'] || '').toLowerCase();
+            const nomeStr = String(f.nome || f['alimento'] || '').toLowerCase();
             const label = (marcaStr && marcaStr !== 'web') ? `${nomeStr} (${marcaStr})` : nomeStr;
             return label === inputName.toLowerCase() || nomeStr === inputName.toLowerCase();
         });
@@ -1235,10 +1297,13 @@
             const rawKcal = parseFloat(match.kcal || match['kcal']) || 0;
             const rawP = parseFloat(match.p || match['proteine']) || 0;
             const rawG = parseFloat(match.g || match['grassi']) || 0;
+            const rawSaturi = parseFloat(match.saturi || match['saturi']) || 0;
             const rawC = parseFloat(match.c || match['carboidrati']) || 0;
+            const rawZ = parseFloat(match.z || match['zuccheri']) || 0;
+            const rawSale = parseFloat(match.sale || match['sale']) || 0;
 
             const marcaStr = match.marca || match['marca'] || '';
-            const nomeStr = match.nome || match['alimento'] || match['nome'] || inputName;
+            const nomeStr = match.nome || f['alimento'] || inputName;
 
             currentDayFoods.push({
                 id: Date.now() + Math.random(),
@@ -1248,7 +1313,10 @@
                 kcal: Math.round(rawKcal * factor),
                 p: Math.round(rawP * factor * 10) / 10,
                 g: Math.round(rawG * factor * 10) / 10,
-                c: Math.round(rawC * factor * 10) / 10
+                saturi: Math.round(rawSaturi * factor * 10) / 10,
+                c: Math.round(rawC * factor * 10) / 10,
+                z: Math.round(rawZ * factor * 10) / 10,
+                sale: Math.round(rawSale * factor * 100) / 100
             });
         } else {
             if (!grams || isNaN(grams)) grams = 100;
@@ -1257,7 +1325,7 @@
                 meal: meal,
                 nome: inputName,
                 grams: grams,
-                kcal: 0, p: 0, g: 0, c: 0
+                kcal: 0, p: 0, g: 0, saturi: 0, c: 0, z: 0, sale: 0
             });
         }
 
@@ -1274,6 +1342,16 @@
         autoSaveDraft();
     }
 
+    function toggleMealExtra(meal) {
+        const box = document.getElementById(`extradetails-${meal}`);
+        box.style.display = box.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function toggleDailyExtra() {
+        const box = document.getElementById(`extradetails-Daily`);
+        box.style.display = box.style.display === 'block' ? 'none' : 'block';
+    }
+
     function updateTodaySummary() {
         const meals = ['Colazione', 'Pranzo', 'Cena', 'Snack'];
         
@@ -1281,22 +1359,28 @@
             document.getElementById(`list-${meal}`).innerHTML = '';
         });
 
-        let totKcal = 0, totP = 0, totG = 0, totC = 0;
+        let totKcal = 0, totP = 0, totG = 0, totSaturi = 0, totC = 0, totZ = 0, totSale = 0;
 
         meals.forEach(meal => {
             const mealItems = currentDayFoods.filter(f => f.meal === meal);
-            let mKcal = 0, mP = 0, mG = 0, mC = 0;
+            let mKcal = 0, mP = 0, mG = 0, mSaturi = 0, mC = 0, mZ = 0, mSale = 0;
 
             mealItems.forEach(item => {
                 mKcal += (item.kcal || 0);
                 mP += (item.p || 0);
                 mG += (item.g || 0);
+                mSaturi += (item.saturi || 0);
                 mC += (item.c || 0);
+                mZ += (item.z || 0);
+                mSale += (item.sale || 0);
 
                 totKcal += (item.kcal || 0);
                 totP += (item.p || 0);
                 totG += (item.g || 0);
+                totSaturi += (item.saturi || 0);
                 totC += (item.c || 0);
+                totZ += (item.z || 0);
+                totSale += (item.sale || 0);
 
                 const list = document.getElementById(`list-${item.meal}`);
                 const li = document.createElement('li');
@@ -1307,12 +1391,16 @@
                 list.appendChild(li);
             });
 
-            document.getElementById(`subtotal-${meal}`).textContent = 
+            document.getElementById(`subtext-${meal}`).textContent = 
                 `Pasto: ${mKcal} kcal | P: ${mP.toFixed(1)}g | G: ${mG.toFixed(1)}g | C: ${mC.toFixed(1)}g`;
+            document.getElementById(`extradetails-${meal}`).textContent = 
+                `Zuccheri: ${mZ.toFixed(1)}g | Saturi: ${mSaturi.toFixed(1)}g | Sale: ${mSale.toFixed(2)}g`;
         });
 
-        document.getElementById('totals').textContent = 
+        document.getElementById('totals').querySelector('span').textContent = 
             `Totale Giornata: ${totKcal} kcal | P: ${totP.toFixed(1)}g | G: ${totG.toFixed(1)}g | C: ${totC.toFixed(1)}g`;
+        document.getElementById('extradetails-Daily').textContent = 
+            `Zuccheri totali: ${totZ.toFixed(1)}g | Saturi totali: ${totSaturi.toFixed(1)}g | Sale totale: ${totSale.toFixed(2)}g`;
     }
 
     function generateFeedback(totalKcal, targetKcal, waterMl) {
@@ -1496,7 +1584,7 @@
 
         const match = FOOD_DATABASE.find(f => {
             const marcaStr = String(f.marca || f['marca'] || '').toLowerCase();
-            const nomeStr = String(f.nome || f['alimento'] || f['nome'] || '').toLowerCase();
+            const nomeStr = String(f.nome || f['alimento'] || '').toLowerCase();
             const label = (marcaStr && marcaStr !== 'web') ? `${nomeStr} (${marcaStr})` : nomeStr;
             return label === inputName.toLowerCase() || nomeStr === inputName.toLowerCase();
         });
@@ -1504,7 +1592,7 @@
         let finalName = inputName;
         if (match) {
             const marcaStr = match.marca || match['marca'] || '';
-            const nomeStr = match.nome || match['alimento'] || match['nome'] || inputName;
+            const nomeStr = match.nome || match['alimento'] || inputName;
             finalName = (marcaStr && marcaStr !== 'WEB' && marcaStr !== '') ? `${nomeStr} (${marcaStr})` : nomeStr;
         }
 
@@ -1599,18 +1687,21 @@
             recipe.ingredients.forEach(ing => {
                 const match = FOOD_DATABASE.find(f => {
                     const marcaStr = String(f.marca || f['marca'] || '').toLowerCase();
-                    const nomeStr = String(f.nome || f['alimento'] || f['nome'] || '').toLowerCase();
+                    const nomeStr = String(f.nome || f['alimento'] || '').toLowerCase();
                     const label = (marcaStr && marcaStr !== 'web') ? `${nomeStr} (${marcaStr})` : nomeStr;
                     return label === ing.nome.toLowerCase() || nomeStr === ing.nome.toLowerCase();
                 });
 
-                let kcal = 0, p = 0, g = 0, c = 0;
+                let kcal = 0, p = 0, g = 0, saturi = 0, c = 0, z = 0, sale = 0;
                 if (match) {
                     const factor = ing.grams / 100;
                     kcal = Math.round((match.kcal || match['kcal'] || 0) * factor);
                     p = Math.round((match.p || match['proteine'] || 0) * factor * 10) / 10;
                     g = Math.round((match.g || match['grassi'] || 0) * factor * 10) / 10;
+                    saturi = Math.round((match.saturi || match['saturi'] || 0) * factor * 10) / 10;
                     c = Math.round((match.c || match['carboidrati'] || 0) * factor * 10) / 10;
+                    z = Math.round((match.z || match['zuccheri'] || 0) * factor * 10) / 10;
+                    sale = Math.round((match.sale || match['sale'] || 0) * factor * 100) / 100;
                 }
 
                 currentDayFoods.push({
@@ -1618,7 +1709,7 @@
                     meal: mealTarget,
                     nome: ing.nome,
                     grams: ing.grams,
-                    kcal: kcal, p: p, g: g, c: c
+                    kcal: kcal, p: p, g: g, saturi: saturi, c: c, z: z, sale: sale
                 });
             });
             updateTodaySummary();
@@ -1675,27 +1766,33 @@
         const kcal = parseFloat(document.getElementById('newFoodKcal').value);
         const p = parseFloat(document.getElementById('newFoodP').value) || 0;
         const g = parseFloat(document.getElementById('newFoodG').value) || 0;
+        const saturi = parseFloat(document.getElementById('newFoodSaturi').value) || 0;
         const c = parseFloat(document.getElementById('newFoodC').value) || 0;
+        const z = parseFloat(document.getElementById('newFoodZ').value) || 0;
+        const sale = parseFloat(document.getElementById('newFoodSale').value) || 0;
 
         if (!name || isNaN(kcal)) {
             alert("Inserisci il nome e le Kcal dell'alimento.");
             return;
         }
 
-        const newFood = { marca: 'Personalizzato', nome: name, kcal: kcal, c: c, g: g, p: p, porzione_g: 100 };
+        const newFood = { marca: 'Personalizzato', nome: name, kcal: kcal, c: c, z: z, g: g, saturi: saturi, p: p, sale: sale, porzione_g: 100 };
         FOOD_DATABASE.push(newFood);
 
         const customFoods = JSON.parse(localStorage.getItem('customFoodsDatabase') || '[]');
         customFoods.push(newFood);
         localStorage.setItem('customFoodsDatabase', JSON.stringify(customFoods));
 
-        alert(`✅ Alimento salvato! Se hai modificato il file centrale, premi "Sincronizza Alimenti" per aggiornare la lista.`);
+        alert(`✅ Alimento "${name}" salvato nel database locale!`);
         
         document.getElementById('newFoodName').value = '';
         document.getElementById('newFoodKcal').value = '';
         document.getElementById('newFoodP').value = '';
         document.getElementById('newFoodG').value = '';
+        document.getElementById('newFoodSaturi').value = '';
         document.getElementById('newFoodC').value = '';
+        document.getElementById('newFoodZ').value = '';
+        document.getElementById('newFoodSale').value = '';
         toggleDrawer('addFoodDrawer');
     }
 </script>
