@@ -6,28 +6,34 @@
     <title>NutriTracker Web</title>
     <!-- Collegamento al Manifest PWA -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#ec4899">
+    <meta name="theme-color" id="metaThemeColor" content="#ec4899">
     <!-- Libreria SheetJS per leggere file Excel (.xlsx) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
+        /* TEMA BASE: UOMO (Header Fucsia, Corpo Azzurro chiaro) */
         :root {
             --primary: #ec4899;
             --primary-hover: #db2777;
-            --bg-color: #fdf2f8;
+            --header-bg: #ec4899;
+            --header-text: #ffffff;
+            --bg-color: #f0f9ff;
             --card-bg: #ffffff;
             --text: #1e293b;
             --text-muted: #64748b;
-            --border: #fbcfe8;
+            --border: #bae6fd;
             --success: #10b981;
             --danger: #ef4444;
             --radius: 12px;
         }
 
-        body.theme-male {
-            --primary: #0284c7;
-            --primary-hover: #0369a1;
-            --bg-color: #f0f9ff;
-            --border: #bae6fd;
+        /* TEMA DONNA: (Header Azzurrino, Corpo Rosa chiaro) */
+        body.theme-female {
+            --primary: #818cf8;
+            --primary-hover: #6366f1;
+            --header-bg: #818cf8;
+            --header-text: #ffffff;
+            --bg-color: #fff1f2;
+            --border: #fbcfe8;
         }
 
         html, body {
@@ -138,6 +144,29 @@
             border: 1px solid var(--border);
         }
 
+        /* PULSANTE ELIMINA PICCOLO E COMPATTO (QUADRATINO ROSSO) */
+        .btn-danger-square {
+            background-color: var(--danger);
+            color: white;
+            width: 28px;
+            height: 28px;
+            min-width: 28px;
+            padding: 0;
+            font-size: 0.85rem;
+            font-weight: bold;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: none;
+            line-height: 1;
+        }
+
+        .btn-danger-square:hover {
+            background-color: #dc2626;
+        }
+
         .btn-danger {
             background-color: var(--danger);
             color: white;
@@ -167,16 +196,18 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: var(--card-bg);
+            background: var(--header-bg);
             border: 1px solid var(--border);
             border-radius: var(--radius);
-            padding: 6px 10px;
+            padding: 8px 12px;
             position: relative;
+            transition: background 0.3s ease;
         }
 
         .icon-nav-bar h2 {
-            font-size: 1.1rem;
-            color: var(--primary);
+            font-size: 1.2rem;
+            color: var(--header-text);
+            font-weight: 800;
         }
 
         .icon-btn-group {
@@ -189,14 +220,15 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: var(--bg-color);
-            color: var(--text);
-            border: 1px solid var(--border);
+            background: rgba(255, 255, 255, 0.2);
+            color: var(--header-text);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 8px;
             padding: 4px 8px;
             font-size: 0.7rem;
             cursor: pointer;
             min-width: 48px;
+            backdrop-filter: blur(4px);
         }
 
         .icon-btn span.icon {
@@ -208,7 +240,7 @@
         .speech-bubble-container {
             display: none;
             position: absolute;
-            top: 52px;
+            top: 56px;
             left: 10px;
             right: 10px;
             z-index: 1500;
@@ -300,8 +332,9 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 4px 0;
+            padding: 6px 0;
             border-bottom: 1px dashed var(--border);
+            gap: 8px;
         }
 
         .meal-items li:last-child {
@@ -441,7 +474,7 @@
 
 <div class="container">
 
-    <!-- NAV BAR ICONE -->
+    <!-- NAV BAR ICONE (PULITA SENZA TESTO DI BENVENUTO FISSO) -->
     <div class="icon-nav-bar">
         <div>
             <h2>NutriTracker</h2>
@@ -491,11 +524,13 @@
         </div>
     </div>
 
-    <!-- TARGET & AVVISI -->
+    <!-- TARGET CALORICO CON PROGRESSIONE GIORNALIERA (ES: 1023 / 2168 kcal) -->
     <div class="card" style="padding: 10px 12px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 0.88rem; font-weight: 600;">Target Calorico:</span>
-            <span id="targetResultMain" style="font-size: 1.05rem; font-weight: bold; color: var(--primary);">1850 kcal</span>
+            <span style="font-size: 1.05rem; font-weight: bold; color: var(--primary);">
+                <span id="consumedKcalMain">0</span> / <span id="targetResultMain">1850</span> kcal
+            </span>
         </div>
         <div id="weightReminderBanner" style="display:none; background:#fffbebfb; border:1px solid #fef3c7; color:#b45309; padding:6px 10px; border-radius:6px; font-size:0.78rem; margin-top:6px;">
             ⚖️ <strong>Promemoria Pesata:</strong> Sono trascorsi più di 14 giorni dall'ultima pesata. Aggiorna il peso nel Profilo!
@@ -625,8 +660,8 @@
             <div class="form-group">
                 <label for="sexSelect">Sesso</label>
                 <select id="sexSelect" onchange="switchProfile()">
-                    <option value="F" selected>Donna 👩</option>
-                    <option value="M">Uomo 👨</option>
+                    <option value="F">Donna 👩</option>
+                    <option value="M" selected>Uomo 👨</option>
                 </select>
             </div>
             <div class="form-group">
@@ -814,11 +849,11 @@
     let waterTargetMl = 2000;
     let recipeDraftIngredients = [];
 
-    let currentSex = 'F';
+    let currentSex = 'M';
 
     let appData = {
         userName: '',
-        activeSex: 'F',
+        activeSex: 'M',
         profiles: {
             F: { age: 30, height: 165, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [] },
             M: { age: 40, height: 175, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [] }
@@ -845,7 +880,7 @@
             } catch(e){}
         }
 
-        currentSex = appData.activeSex || 'F';
+        currentSex = appData.activeSex || 'M';
         document.getElementById('sexSelect').value = currentSex;
         document.getElementById('userNameInput').value = appData.userName || '';
 
@@ -857,7 +892,7 @@
 
         syncDatabaseFromGithub(false);
 
-        // Registrazione Service Worker per PWA e gestione scorciatoia URL
+        // Registrazione Service Worker per PWA
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').then(() => {
                 const urlParams = new URLSearchParams(window.location.search);
@@ -886,19 +921,16 @@
 
         let message = '';
         if (lastVisitDate !== todayStr) {
-            // Prima apertura del nuovo giorno
             const readyWord = currentSex === 'M' ? 'pronto ad iniziare?' : 'pronta ad iniziare?';
             message = name ? `☀️ Buongiorno ${name}, ${readyWord}` : `☀️ Buongiorno, ${readyWord}`;
             localStorage.setItem('lastVisitDateNutriTracker', todayStr);
         } else {
-            // Aperture successive nello stesso giorno
             message = name ? `💪 ${name}, continua così! Registra il tuo pasto.` : `💪 Continua così! Registra il tuo pasto.`;
         }
 
         document.getElementById('welcomeMessageText').innerHTML = message;
         document.getElementById('welcomeBubbleContainer').style.display = 'block';
 
-        // Nascondi automaticamente il fumetto dopo 6 secondi
         setTimeout(() => {
             closeWelcomeBubble();
         }, 6000);
@@ -1006,11 +1038,14 @@
 
     function loadProfileUI() {
         const prof = appData.profiles[currentSex];
+        const metaTheme = document.getElementById('metaThemeColor');
 
-        if (currentSex === 'M') {
-            document.body.className = 'theme-male';
-        } else {
+        if (currentSex === 'F') {
             document.body.className = 'theme-female';
+            if (metaTheme) metaTheme.setAttribute('content', '#818cf8');
+        } else {
+            document.body.className = '';
+            if (metaTheme) metaTheme.setAttribute('content', '#ec4899');
         }
 
         document.getElementById('age').value = prof.age;
@@ -1124,7 +1159,7 @@
 
         saveDataToStorage();
 
-        document.getElementById('targetResultMain').textContent = `${targetKcal} kcal / giorno`;
+        document.getElementById('targetResultMain').textContent = `${targetKcal}`;
         calculateWaterTarget();
         updateActivitiesSummary();
     }
@@ -1202,7 +1237,7 @@
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.strokeStyle = currentSex === 'M' ? '#0284c7' : '#ec4899';
+        ctx.strokeStyle = currentSex === 'F' ? '#818cf8' : '#ec4899';
         ctx.lineWidth = 2;
 
         history.forEach((item, idx) => {
@@ -1273,7 +1308,7 @@
             const li = document.createElement('li');
             li.innerHTML = `
                 <span>🏃‍♂️ ${a.name} (${a.duration} min) - <strong>~${a.kcal} kcal</strong></span>
-                <button type="button" class="btn-danger" onclick="removeActivity(${a.id})">Elimina</button>
+                <button type="button" class="btn-danger-square" onclick="removeActivity(${a.id})" title="Elimina">✕</button>
             `;
             list.appendChild(li);
         });
@@ -1406,7 +1441,7 @@
                 const li = document.createElement('li');
                 li.innerHTML = `
                     <span>${item.nome} (${item.grams}g) - <strong>${item.kcal} kcal</strong></span>
-                    <button type="button" class="btn-danger" onclick="removeFood(${item.id})">Elimina</button>
+                    <button type="button" class="btn-danger-square" onclick="removeFood(${item.id})" title="Elimina">✕</button>
                 `;
                 list.appendChild(li);
             });
@@ -1415,6 +1450,8 @@
                 `Pasto: ${mKcal} kcal | P: ${mP.toFixed(1)}g | G: ${mG.toFixed(1)}g | C: ${mC.toFixed(1)}g`;
         });
 
+        // Aggiorna sia il riepilogo in basso che la progressione al centro
+        document.getElementById('consumedKcalMain').textContent = totKcal;
         document.getElementById('totals').textContent = 
             `Totale Giornata: ${totKcal} kcal | P: ${totP.toFixed(1)}g | G: ${totG.toFixed(1)}g | C: ${totC.toFixed(1)}g`;
     }
@@ -1514,7 +1551,7 @@
                             ${item.hasActivity ? 'Attività' : 'Riposo'}
                         </span>
                         <button class="btn-edit" onclick="editHistoryEntry(${idx})">✏️ Modifica</button>
-                        <button class="btn-danger" onclick="deleteHistoryEntry(${idx})">🗑️ Elimina</button>
+                        <button class="btn-danger-square" onclick="deleteHistoryEntry(${idx})" title="Elimina">✕</button>
                     </div>
                 </div>
                 <div class="history-details" style="margin-top:4px; line-height: 1.35;">
@@ -1629,9 +1666,9 @@
         }
 
         container.innerHTML = recipeDraftIngredients.map((ing, idx) => `
-            <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding:2px 0;">
+            <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding:2px 0; align-items:center;">
                 <span>${ing.nome} (${ing.grams}g)</span>
-                <button type="button" class="btn-danger" onclick="recipeDraftIngredients.splice(${idx},1); renderRecipeDraft();">✕</button>
+                <button type="button" class="btn-danger-square" onclick="recipeDraftIngredients.splice(${idx},1); renderRecipeDraft();">✕</button>
             </div>
         `).join('');
     }
@@ -1668,7 +1705,7 @@
             <div class="meal-card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <strong>${recipe.name}</strong>
-                    <button class="btn-danger" onclick="deleteRecipe(${recipe.id})">Elimina</button>
+                    <button class="btn-danger-square" onclick="deleteRecipe(${recipe.id})" title="Elimina">✕</button>
                 </div>
                 <div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">
                     ${recipe.ingredients.map(i => `${i.nome} (${i.grams}g)`).join(', ')}
@@ -1759,7 +1796,7 @@
                     FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...JSON.parse(parsed.customFoods)];
                 }
                 alert("✅ Backup ripristinato con successo!");
-                currentSex = appData.activeSex || 'F';
+                currentSex = appData.activeSex || 'M';
                 document.getElementById('sexSelect').value = currentSex;
                 document.getElementById('userNameInput').value = appData.userName || '';
                 loadProfileUI();
