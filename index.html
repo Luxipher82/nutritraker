@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NutriTracker Web</title>
+    <!-- Collegamento al Manifest PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#ec4899">
     <!-- Libreria SheetJS per leggere file Excel (.xlsx) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
@@ -364,9 +367,12 @@
 
 <div class="container">
 
-    <!-- NAV BAR ICONE -->
+    <!-- NAV BAR ICONE & SALUTO -->
     <div class="icon-nav-bar">
-        <h2>NutriTracker</h2>
+        <div>
+            <h2>NutriTracker</h2>
+            <div id="welcomeMessage" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 2px;">Buongiorno!</div>
+        </div>
         <div class="icon-btn-group">
             <button class="icon-btn" onclick="toggleDrawer('profileDrawer')" title="Profilo">
                 <span class="icon">👤</span>
@@ -387,6 +393,23 @@
         </div>
     </div>
 
+    <!-- IDRATAZIONE ACQUA (WIDGET RAPIDO IN PRIMO PIANO) -->
+    <div class="card">
+        <div class="water-box">
+            <div>
+                <h4 style="margin: 0; font-size: 0.9rem;">💧 Idratazione Rapida</h4>
+                <div id="waterLabelText" style="font-size: 0.75rem; color: var(--text-muted);">
+                    Tocca per aggiungere acqua al volo
+                </div>
+            </div>
+            <div class="water-btn-group">
+                <button class="btn-secondary" onclick="addWater(-250)">-</button>
+                <span id="waterCurrentDisplay" style="font-weight: bold; font-size: 0.85rem; min-width: 60px; text-align: center;">0 / 2000 ml</span>
+                <button onclick="addWater(250)">+</button>
+            </div>
+        </div>
+    </div>
+
     <!-- TARGET & AVVISI -->
     <div class="card" style="padding: 10px 12px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -395,23 +418,6 @@
         </div>
         <div id="weightReminderBanner" style="display:none; background:#fffbebfb; border:1px solid #fef3c7; color:#b45309; padding:6px 10px; border-radius:6px; font-size:0.78rem; margin-top:6px;">
             ⚖️ <strong>Promemoria Pesata:</strong> Sono trascorsi più di 14 giorni dall'ultima pesata. Aggiorna il peso nel Profilo!
-        </div>
-    </div>
-
-    <!-- IDRATAZIONE ACQUA -->
-    <div class="card">
-        <div class="water-box">
-            <div>
-                <h4 style="margin: 0; font-size: 0.9rem;">💧 Idratazione</h4>
-                <div id="waterLabelText" style="font-size: 0.75rem; color: var(--text-muted);">
-                    Oggi ti sei idratata/o abbastanza?
-                </div>
-            </div>
-            <div class="water-btn-group">
-                <button class="btn-secondary" onclick="addWater(-250)">-</button>
-                <span id="waterCurrentDisplay" style="font-weight: bold; font-size: 0.85rem; min-width: 60px; text-align: center;">0 / 2000 ml</span>
-                <button onclick="addWater(250)">+</button>
-            </div>
         </div>
     </div>
 
@@ -521,12 +527,17 @@
 
 </div>
 
-<!-- DRAWER 1: PROFILO & DEFICIT & PESO -->
+<!-- DRAWER 1: PROFILO & NOME & PESO -->
 <div id="profileDrawer" class="drawer-overlay" onclick="closeDrawerOnBg(event, 'profileDrawer')">
     <div class="drawer-content">
         <div class="drawer-header">
             <h3>👤 Dati Profilo & Grafico Peso</h3>
             <button class="close-btn" onclick="toggleDrawer('profileDrawer')">✕</button>
+        </div>
+
+        <div class="form-group">
+            <label for="userNameInput">Il tuo Nome</label>
+            <input type="text" id="userNameInput" placeholder="Es. Mario" oninput="updateUserName()">
         </div>
 
         <div class="row">
@@ -560,7 +571,7 @@
         </div>
 
         <div class="form-group">
-            <label for="deficitSelect">Obiettivo Calorio (Deficit Limitato)</label>
+            <label for="deficitSelect">Obiettivo Calorico (Deficit Limitato)</label>
             <select id="deficitSelect" onchange="calculateTDEE()">
                 <option value="0">Mantenimento (0%)</option>
                 <option value="10" selected>Deficit Leggero (-10%)</option>
@@ -725,6 +736,7 @@
     let currentSex = 'F';
 
     let appData = {
+        userName: '',
         activeSex: 'F',
         profiles: {
             F: { age: 30, height: 165, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [] },
@@ -754,13 +766,25 @@
 
         currentSex = appData.activeSex || 'F';
         document.getElementById('sexSelect').value = currentSex;
+        document.getElementById('userNameInput').value = appData.userName || '';
 
         loadProfileUI();
         loadDraftFromStorage();
         renderHistory();
         renderSavedRecipes();
+        updateWelcomeMessage();
 
         syncDatabaseFromGithub(false);
+
+        // Registrazione Service Worker per PWA e gestione scorciatoia URL
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(() => {
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('action') === 'add_water') {
+                    addWater(250);
+                }
+            }).catch(() => {});
+        }
 
         document.addEventListener('click', function(e) {
             if (!e.target.closest('.form-group')) {
@@ -768,6 +792,19 @@
             }
         });
     };
+
+    function updateUserName() {
+        appData.userName = document.getElementById('userNameInput').value.trim();
+        saveDataToStorage();
+        updateWelcomeMessage();
+    }
+
+    function updateWelcomeMessage() {
+        const name = appData.userName ? appData.userName : '';
+        const readyWord = currentSex === 'M' ? 'pronto ad iniziare?' : 'pronta ad iniziare?';
+        const greeting = name ? `Buongiorno ${name}, ${readyWord}` : `Buongiorno, ${readyWord}`;
+        document.getElementById('welcomeMessage').textContent = greeting;
+    }
 
     function getCurrentWeight() {
         const prof = appData.profiles[currentSex];
@@ -860,6 +897,7 @@
         appData.activeSex = currentSex;
         saveDataToStorage();
         loadProfileUI();
+        updateWelcomeMessage();
     }
 
     function loadProfileUI() {
@@ -867,10 +905,8 @@
 
         if (currentSex === 'M') {
             document.body.className = 'theme-male';
-            document.getElementById('waterLabelText').textContent = "Oggi ti sei idratato abbastanza?";
         } else {
             document.body.className = 'theme-female';
-            document.getElementById('waterLabelText').textContent = "Oggi ti sei idratata abbastanza?";
         }
 
         document.getElementById('age').value = prof.age;
@@ -957,7 +993,8 @@
     }
 
     function updateWaterDisplay() {
-        document.getElementById('waterCurrentDisplay').textContent = `${currentWaterMl} / ${waterTargetMl} ml`;
+        const el = document.getElementById('waterCurrentDisplay');
+        if (el) el.textContent = `${currentWaterMl} / ${waterTargetMl} ml`;
     }
 
     function calculateTDEE() {
@@ -989,7 +1026,8 @@
     }
 
     function addWeightRecord() {
-        const val = parseFloat(document.getElementById('currentWeightInput').value);
+        const inputField = document.getElementById('currentWeightInput');
+        const val = parseFloat(inputField.value);
         if (!val || isNaN(val)) {
             alert("Inserisci un peso valido.");
             return;
@@ -1349,7 +1387,7 @@
         }
 
         saveDataToStorage();
-        autoSaveDraft();
+        localStorage.removeItem('todayDraftNutriTracker');
         renderHistory();
         toggleDrawer('historyDrawer');
     }
@@ -1395,6 +1433,7 @@
             appData.activeSex = currentSex;
             document.getElementById('sexSelect').value = currentSex;
             loadProfileUI();
+            updateWelcomeMessage();
 
             currentDayFoods = item.rawFoods ? [...item.rawFoods] : [];
             currentDayActivities = item.rawActivities ? [...item.rawActivities] : [];
@@ -1619,9 +1658,11 @@
                 alert("✅ Backup ripristinato con successo!");
                 currentSex = appData.activeSex || 'F';
                 document.getElementById('sexSelect').value = currentSex;
+                document.getElementById('userNameInput').value = appData.userName || '';
                 loadProfileUI();
                 renderHistory();
                 renderSavedRecipes();
+                updateWelcomeMessage();
             } catch (err) {
                 alert("File di backup non valido.");
             }
