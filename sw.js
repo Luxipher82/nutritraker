@@ -1,5 +1,6 @@
 const CACHE_NAME = 'nutritracker-cache-v1';
 const urlsToCache = [
+    './',
     './index.html',
     './manifest.json',
     'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
@@ -9,9 +10,7 @@ const urlsToCache = [
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_NAME)
-            .then(cache => {
-                return cache.addAll(urlsToCache);
-            })
+            .then(cache => cache.addAll(urlsToCache))
             .then(() => self.skipWaiting())
     );
 });
@@ -31,18 +30,34 @@ self.addEventListener('activate', event => {
     );
 });
 
-// Intercettazione delle richieste di rete (Network falling back to cache)
+// Intercettazione delle richieste di rete
 self.addEventListener('fetch', event => {
-    // Escludiamo la chiamata al file Excel remoto di GitHub per evitare che usi dati vecchi offline
+    // Richieste al file Excel di GitHub: priorità Rete (per avere dati aggiornati) con fallback in Cache se offline
     if (event.request.url.includes('raw.githubusercontent.com')) {
-        event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
+        event.respondWith(
+            fetch(event.request).catch(() => caches.match(event.request))
+        );
         return;
     }
 
+    // Per tutte le altre risorse: Cache First con salvataggio dinamico della rete
     event.respondWith(
-        caches.match(event.request)
-            .then(response => {
-                return response || fetch(event.request);
-            })
+        caches.match(event.request).then(cachedResponse => {
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+            return fetch(event.request).then(networkResponse => {
+                if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+                    return networkResponse;
+                }
+
+                const responseToCache = networkResponse.clone();
+                caches.open(CACHE_NAME).then(cache => {
+                    cache.put(event.request, responseToCache);
+                });
+
+                return networkResponse;
+            });
+        })
     );
 });
