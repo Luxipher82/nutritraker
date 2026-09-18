@@ -23,7 +23,12 @@
       "short_name": "+250ml Acqua",
       "description": "Registra subito un bicchiere d'acqua",
       "url": "./index.html?action=add_water",
-      "icons": [{ "src": "icon-192.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ]
 }
