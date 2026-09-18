@@ -524,7 +524,7 @@
         </div>
     </div>
 
-    <!-- TARGET CALORICO CON PROGRESSIONE GIORNALIERA (ES: 1023 / 2168 kcal) -->
+    <!-- TARGET CALORICO CON PROGRESSIONE GIORNALIERA -->
     <div class="card" style="padding: 10px 12px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 0.88rem; font-weight: 600;">Target Calorico:</span>
@@ -1034,6 +1034,7 @@
         appData.activeSex = currentSex;
         saveDataToStorage();
         loadProfileUI();
+        loadDraftFromStorage();
     }
 
     function loadProfileUI() {
@@ -1086,17 +1087,32 @@
         const todayStr = new Date().toLocaleDateString('it-IT');
         const draft = {
             date: todayStr,
+            profileSex: currentSex,
             currentDayFoods: currentDayFoods,
             currentDayActivities: currentDayActivities,
             currentWaterMl: currentWaterMl
         };
-        localStorage.setItem('todayDraftNutriTracker', JSON.stringify(draft));
+        localStorage.setItem(`todayDraftNutriTracker_${currentSex}`, JSON.stringify(draft));
     }
 
     function loadDraftFromStorage() {
-        const draftStr = localStorage.getItem('todayDraftNutriTracker');
         const todayStr = new Date().toLocaleDateString('it-IT');
+        
+        // 1. Cerca prima se c'è già una registrazione salvata oggi per questo profilo nello storico
+        const existingEntry = appData.entries.find(e => e.date === todayStr && e.profileSex === currentSex);
+        
+        if (existingEntry) {
+            currentDayFoods = existingEntry.rawFoods ? [...existingEntry.rawFoods] : [];
+            currentDayActivities = existingEntry.rawActivities ? [...existingEntry.rawActivities] : [];
+            currentWaterMl = existingEntry.waterMl || 0;
+            updateTodaySummary();
+            updateActivitiesSummary();
+            updateWaterDisplay();
+            return;
+        }
 
+        // 2. Altrimenti carica la bozza del giorno corrente dal localStorage
+        const draftStr = localStorage.getItem(`todayDraftNutriTracker_${currentSex}`);
         if (draftStr) {
             try {
                 const draft = JSON.parse(draftStr);
@@ -1107,11 +1123,21 @@
                     updateTodaySummary();
                     updateActivitiesSummary();
                     updateWaterDisplay();
+                    return;
                 } else {
-                    localStorage.removeItem('todayDraftNutriTracker');
+                    // È iniziato un nuovo giorno: azzera per la nuova giornata
+                    localStorage.removeItem(`todayDraftNutriTracker_${currentSex}`);
                 }
             } catch(e){}
         }
+
+        // 3. Nessun dato per oggi: resetta l'interfaccia a zero
+        currentDayFoods = [];
+        currentDayActivities = [];
+        currentWaterMl = 0;
+        updateTodaySummary();
+        updateActivitiesSummary();
+        updateWaterDisplay();
     }
 
     function calculateWaterTarget() {
@@ -1450,7 +1476,6 @@
                 `Pasto: ${mKcal} kcal | P: ${mP.toFixed(1)}g | G: ${mG.toFixed(1)}g | C: ${mC.toFixed(1)}g`;
         });
 
-        // Aggiorna sia il riepilogo in basso che la progressione al centro
         document.getElementById('consumedKcalMain').textContent = totKcal;
         document.getElementById('totals').textContent = 
             `Totale Giornata: ${totKcal} kcal | P: ${totP.toFixed(1)}g | G: ${totG.toFixed(1)}g | C: ${totC.toFixed(1)}g`;
@@ -1528,7 +1553,7 @@
         }
 
         saveDataToStorage();
-        localStorage.removeItem('todayDraftNutriTracker');
+        autoSaveDraft(); // Salva e mantiene visibili i dati della giornata corrente
         renderHistory();
         toggleDrawer('historyDrawer');
     }
