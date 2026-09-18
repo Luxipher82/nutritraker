@@ -369,7 +369,7 @@
         <!-- Dashboard Summary -->
         <section class="card">
             <div class="card-header">
-                <span class="card-title">Target Giornaliero</span>
+                <span class="card-title">Target Giornaliero (<span id="user-display-name">Utente</span>)</span>
                 <span id="date-display" style="font-size: 0.75rem; color: var(--text-secondary);"></span>
             </div>
             
@@ -424,10 +424,14 @@
         <div id="meals-container" style="display: flex; flex-direction: column; gap: 16px;"></div>
     </div>
 
-    <!-- Modal Profilo -->
+    <!-- Modal Profilo (CON NOME RIPRISTINATO) -->
     <div id="profile-modal" class="modal-overlay">
         <div class="modal">
             <div class="modal-title">Impostazioni Profilo</div>
+            <div class="form-group">
+                <label>Nome Utente</label>
+                <input type="text" id="prof-name" placeholder="Inserisci il tuo nome">
+            </div>
             <div class="form-group">
                 <label>Sesso / Tema Interface</label>
                 <select id="prof-gender">
@@ -481,7 +485,7 @@
         </div>
     </div>
 
-    <!-- Modal Aggiungi Alimento Avanzata -->
+    <!-- Modal Aggiungi Alimento -->
     <div id="add-food-modal" class="modal-overlay">
         <div class="modal">
             <div class="modal-title">Aggiungi Alimento a <span id="modal-meal-name"></span></div>
@@ -494,9 +498,47 @@
                 <label>Quantità (grammi)</label>
                 <input type="number" id="food-grams-input" value="100">
             </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                <button class="btn-sm btn-primary-light" onclick="openCustomFoodModal()">+ Crea Nuovo Alimento</button>
+            </div>
             <div class="modal-actions">
                 <button class="btn-sm btn-secondary" onclick="closeModal('add-food-modal')">Annulla</button>
                 <button class="btn-sm btn-primary" onclick="confirmAddFood()">Conferma Aggiunta</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crea Nuovo Alimento Manuale (RIPRISTINATO) -->
+    <div id="custom-food-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-title">Crea Nuovo Alimento (Valori per 100g)</div>
+            <div class="form-group">
+                <label>Nome Alimento</label>
+                <input type="text" id="custom-food-name" placeholder="Es. Pane Integrale">
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div class="form-group">
+                    <label>Kcal</label>
+                    <input type="number" id="custom-food-kcal" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Proteine (g)</label>
+                    <input type="number" step="0.1" id="custom-food-p" value="0">
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <div class="form-group">
+                    <label>Grassi (g)</label>
+                    <input type="number" step="0.1" id="custom-food-g" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Carboidrati (g)</label>
+                    <input type="number" step="0.1" id="custom-food-c" value="0">
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-sm btn-secondary" onclick="closeModal('custom-food-modal')">Annulla</button>
+                <button class="btn-sm btn-primary" onclick="saveCustomFood()">Salva nel Database</button>
             </div>
         </div>
     </div>
@@ -510,11 +552,12 @@
         ];
 
         let state = {
-            profile: { gender: 'female', age: 30, height: 165, weight: 65, deficit: 15 },
+            profile: { name: 'Utente', gender: 'female', age: 30, height: 165, weight: 65, deficit: 15 },
             today: {
                 water: 0,
                 meals: { Colazione: [], Pranzo: [], Cena: [], Spuntino: [] }
-            }
+            },
+            customFoods: []
         };
 
         let currentSelectedMeal = '';
@@ -540,9 +583,16 @@
         function loadStateFromStorage() {
             const saved = localStorage.getItem('nutritracker_state');
             if (saved) {
-                try { state = JSON.parse(saved); } catch (e) {}
+                try { 
+                    state = JSON.parse(saved); 
+                    if (!state.profile.name) state.profile.name = 'Utente';
+                    if (state.customFoods && state.customFoods.length > 0) {
+                        foodDatabase = [...foodDatabase, ...state.customFoods];
+                    }
+                } catch (e) {}
             }
             updateTheme();
+            document.getElementById('prof-name').value = state.profile.name || 'Utente';
             document.getElementById('prof-gender').value = state.profile.gender || 'female';
             document.getElementById('prof-age').value = state.profile.age || 30;
             document.getElementById('prof-height').value = state.profile.height || 165;
@@ -571,7 +621,7 @@
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
                     const jsonData = XLSX.utils.sheet_to_json(sheet);
                     if (jsonData && jsonData.length > 0) {
-                        foodDatabase = jsonData.map((item, idx) => ({
+                        const remoteDb = jsonData.map((item, idx) => ({
                             id: idx + 100,
                             nome: item.Alimento || item.nome || "Generico",
                             kcal: parseFloat(item.Kcal || item.kcal || 0),
@@ -582,10 +632,13 @@
                             saturi: parseFloat(item.Saturi || item.saturi || 0),
                             sale: parseFloat(item.Sale || item.sale || 0)
                         }));
+                        foodDatabase = [...remoteDb, ...(state.customFoods || [])];
                         statusEl.innerText = `Online (${foodDatabase.length})`;
                     }
                 })
-                .catch(() => { statusEl.innerText = "Offline (Local DB)"; });
+                .catch(() => { 
+                    statusEl.innerText = `Locale (${foodDatabase.length})`; 
+                });
         }
 
         function initMeals() {
@@ -661,7 +714,6 @@
 
             let food = currentSelectedFood;
             if (!food) {
-                // CORREZIONE BUG JS: Usa f.nome anziché f['alimento']
                 food = foodDatabase.find(f => f.nome.toLowerCase() === nameInput.toLowerCase());
             }
 
@@ -682,6 +734,45 @@
             saveState();
             initMeals();
             closeModal('add-food-modal');
+        }
+
+        function openCustomFoodModal() {
+            closeModal('add-food-modal');
+            document.getElementById('custom-food-name').value = '';
+            document.getElementById('custom-food-kcal').value = '0';
+            document.getElementById('custom-food-p').value = '0';
+            document.getElementById('custom-food-g').value = '0';
+            document.getElementById('custom-food-c').value = '0';
+            openModal('custom-food-modal');
+        }
+
+        function saveCustomFood() {
+            const name = document.getElementById('custom-food-name').value.trim();
+            if (!name) {
+                alert("Inserisci un nome valido per l'alimento.");
+                return;
+            }
+
+            const newFood = {
+                id: Date.now(),
+                nome: name,
+                kcal: parseFloat(document.getElementById('custom-food-kcal').value) || 0,
+                p: parseFloat(document.getElementById('custom-food-p').value) || 0,
+                g: parseFloat(document.getElementById('custom-food-g').value) || 0,
+                c: parseFloat(document.getElementById('custom-food-c').value) || 0,
+                zuccheri: 0,
+                saturi: 0,
+                sale: 0
+            };
+
+            if (!state.customFoods) state.customFoods = [];
+            state.customFoods.push(newFood);
+            foodDatabase.push(newFood);
+
+            saveState();
+            closeModal('custom-food-modal');
+            openAddFoodModal(currentSelectedMeal);
+            selectFood(newFood.id);
         }
 
         function removeFoodItem(meal, idx) {
@@ -705,6 +796,7 @@
             bmr = prof.gender === 'female' ? bmr - 161 : bmr + 5;
             const targetKcal = Math.round(bmr * 1.35 * (1 - (prof.deficit / 100)));
 
+            document.getElementById('user-display-name').innerText = prof.name || 'Utente';
             document.getElementById('kcal-consumed').innerText = Math.round(k);
             document.getElementById('kcal-target').innerText = targetKcal;
             document.getElementById('carbs-val').innerText = Math.round(c);
@@ -726,6 +818,7 @@
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
 
         function saveProfile() {
+            state.profile.name = document.getElementById('prof-name').value.trim() || 'Utente';
             state.profile.gender = document.getElementById('prof-gender').value;
             state.profile.age = parseInt(document.getElementById('prof-age').value) || 30;
             state.profile.height = parseInt(document.getElementById('prof-height').value) || 165;
