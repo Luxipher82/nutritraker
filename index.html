@@ -854,6 +854,7 @@
     let recipeDraftIngredients = [];
 
     let currentSex = 'M';
+    let editingEntryDate = null; // Memorizza la data in fase di modifica dallo storico
 
     let appData = {
         userName: '',
@@ -1094,6 +1095,9 @@
     }
 
     function autoSaveDraft() {
+        // Se si sta modificando una giornata passata dello storico, non sovrascrivere la bozza di oggi
+        if (editingEntryDate) return;
+
         const todayStr = new Date().toLocaleDateString('it-IT');
         const draft = {
             date: todayStr,
@@ -1106,6 +1110,7 @@
     }
 
     function loadDraftFromStorage() {
+        editingEntryDate = null; // Resetta qualsiasi stato di modifica attivo
         const todayStr = new Date().toLocaleDateString('it-IT');
         
         const existingEntry = appData.entries.find(e => e.date === todayStr && e.profileSex === currentSex);
@@ -1471,7 +1476,6 @@
 
                 const list = document.getElementById(`list-${item.meal}`);
                 const li = document.createElement('li');
-                // MOSTRA I MACRONUTRIENTI PER IL SINGOLO CIBO
                 li.innerHTML = `
                     <div style="display: flex; flex-direction: column;">
                         <span>${item.nome} (${item.grams}g) - <strong>${item.kcal} kcal</strong></span>
@@ -1535,11 +1539,13 @@
             currentDayActivities.map(a => `${a.name} (${a.duration} min)`).join(', ') + ` [~${totBurned} kcal]` : 'Nessuna';
 
         const comment = generateFeedback(totKcal, prof.targetKcal, currentWaterMl);
-        const todayDateStr = new Date().toLocaleDateString('it-IT');
+        
+        // Se si sta modificando una voce passata, mantieni la sua data originale, altrimenti usa la data di oggi
+        const targetDateStr = editingEntryDate ? editingEntryDate : new Date().toLocaleDateString('it-IT');
 
         const newEntry = {
             id: Date.now() + Math.random(),
-            date: todayDateStr,
+            date: targetDateStr,
             profileSex: currentSex,
             hasActivity: currentDayActivities.length > 0,
             activityText: actSummary,
@@ -1554,7 +1560,7 @@
             rawActivities: [...currentDayActivities]
         };
 
-        const existingIdx = appData.entries.findIndex(e => e.date === todayDateStr && e.profileSex === currentSex);
+        const existingIdx = appData.entries.findIndex(e => e.date === targetDateStr && e.profileSex === currentSex);
 
         if (existingIdx !== -1) {
             appData.entries[existingIdx] = newEntry;
@@ -1563,7 +1569,15 @@
         }
 
         saveDataToStorage();
-        autoSaveDraft();
+
+        // Se stavamo modificando una voce passata, ripristina la schermata di oggi al termine
+        if (editingEntryDate) {
+            editingEntryDate = null;
+            loadDraftFromStorage();
+        } else {
+            autoSaveDraft();
+        }
+
         renderHistory();
         toggleDrawer('historyDrawer');
     }
@@ -1605,10 +1619,16 @@
         if (!item) return;
 
         if (confirm(`Vuoi ripristinare i dati della giornata del ${item.date} nel diario principale per modificarli?`)) {
+            // Salva prima lo stato di oggi prima di sovrascriverlo con quello passato
+            autoSaveDraft();
+
             currentSex = item.profileSex;
             appData.activeSex = currentSex;
             document.getElementById('sexSelect').value = currentSex;
             loadProfileUI();
+
+            // Salva la data che stiamo modificando
+            editingEntryDate = item.date;
 
             currentDayFoods = item.rawFoods ? [...item.rawFoods] : [];
             currentDayActivities = item.rawActivities ? [...item.rawActivities] : [];
@@ -1617,7 +1637,6 @@
             updateTodaySummary();
             updateActivitiesSummary();
             updateWaterDisplay();
-            autoSaveDraft();
 
             toggleDrawer('historyDrawer');
         }
