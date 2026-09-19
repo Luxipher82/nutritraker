@@ -16,7 +16,7 @@
             --primary-hover: #db2777;
             --header-bg: #ec4899;
             --header-text: #ffffff;
-            --bg-color: #e0f2fe; /* Tonalità Blu Chiaro per l'Uomo */
+            --bg-color: #e0f2fe;
             --card-bg: #ffffff;
             --text: #1e293b;
             --text-muted: #64748b;
@@ -32,7 +32,7 @@
             --primary-hover: #6366f1;
             --header-bg: #818cf8;
             --header-text: #ffffff;
-            --bg-color: #ffe4e6; /* Tonalità Rosa Chiaro per la Donna */
+            --bg-color: #ffe4e6;
             --border: #fbcfe8;
         }
 
@@ -355,6 +355,33 @@
             text-align: right;
         }
 
+        /* STILE TENDINA DETTAGLI NUTRIENTI */
+        details.macro-details-accordion {
+            margin-top: 4px;
+            font-size: 0.74rem;
+            color: var(--text-muted);
+        }
+
+        details.macro-details-accordion summary {
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--primary);
+            outline: none;
+            user-select: none;
+        }
+
+        .macro-details-content {
+            background: var(--bg-color);
+            border-radius: 6px;
+            padding: 6px 8px;
+            margin-top: 4px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+            text-align: center;
+            font-size: 0.72rem;
+        }
+
         .water-box {
             display: flex;
             align-items: center;
@@ -543,6 +570,11 @@
 
     <!-- DIARIO ALIMENTARE -->
     <div class="card">
+        <div id="editingBanner" style="display:none; background:#dbeafe; border:1px solid #bfdbfe; color:#1e40af; padding:6px 10px; border-radius:6px; font-size:0.8rem; margin-bottom:10px; justify-content:space-between; align-items:center;">
+            <span>✏️ Stai modificando la giornata del <strong id="editingDateLabel"></strong></span>
+            <button onclick="cancelEditingHistory()" style="width:auto; padding:3px 8px; font-size:0.75rem; background:#3b82f6;">Annulla</button>
+        </div>
+
         <h3>Diario Alimentare di Oggi</h3>
 
         <!-- ☕ COLAZIONE -->
@@ -561,6 +593,16 @@
             </div>
             <ul id="list-Colazione" class="meal-items"></ul>
             <div id="subtotal-Colazione" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
+            
+            <!-- TENDINA DETTAGLI NUTRIENTI COLAZIONE -->
+            <details class="macro-details-accordion">
+                <summary>🔽 Dettaglio Nutrienti</summary>
+                <div class="macro-details-content" id="ext-Colazione">
+                    <div>🍬 Zuccheri: <strong>0g</strong></div>
+                    <div>🥓 Saturi: <strong>0g</strong></div>
+                    <div>🧂 Sale: <strong>0g</strong></div>
+                </div>
+            </details>
         </div>
 
         <!-- 🥗 PRANZO -->
@@ -579,6 +621,16 @@
             </div>
             <ul id="list-Pranzo" class="meal-items"></ul>
             <div id="subtotal-Pranzo" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
+            
+            <!-- TENDINA DETTAGLI NUTRIENTI PRANZO -->
+            <details class="macro-details-accordion">
+                <summary>🔽 Dettaglio Nutrienti</summary>
+                <div class="macro-details-content" id="ext-Pranzo">
+                    <div>🍬 Zuccheri: <strong>0g</strong></div>
+                    <div>🥓 Saturi: <strong>0g</strong></div>
+                    <div>🧂 Sale: <strong>0g</strong></div>
+                </div>
+            </details>
         </div>
 
         <!-- 🍽️ CENA -->
@@ -597,6 +649,16 @@
             </div>
             <ul id="list-Cena" class="meal-items"></ul>
             <div id="subtotal-Cena" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
+            
+            <!-- TENDINA DETTAGLI NUTRIENTI CENA -->
+            <details class="macro-details-accordion">
+                <summary>🔽 Dettaglio Nutrienti</summary>
+                <div class="macro-details-content" id="ext-Cena">
+                    <div>🍬 Zuccheri: <strong>0g</strong></div>
+                    <div>🥓 Saturi: <strong>0g</strong></div>
+                    <div>🧂 Sale: <strong>0g</strong></div>
+                </div>
+            </details>
         </div>
 
         <!-- 🍎 SPUNTINO -->
@@ -615,11 +677,31 @@
             </div>
             <ul id="list-Snack" class="meal-items"></ul>
             <div id="subtotal-Snack" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
+            
+            <!-- TENDINA DETTAGLI NUTRIENTI SPUNTINO -->
+            <details class="macro-details-accordion">
+                <summary>🔽 Dettaglio Nutrienti</summary>
+                <div class="macro-details-content" id="ext-Snack">
+                    <div>🍬 Zuccheri: <strong>0g</strong></div>
+                    <div>🥓 Saturi: <strong>0g</strong></div>
+                    <div>🧂 Sale: <strong>0g</strong></div>
+                </div>
+            </details>
         </div>
 
         <div id="totals" style="font-size: 0.82rem; font-weight: 600; margin-top: 8px; background: #fff; padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
             Totale Giornata: 0 kcal | P: 0g | G: 0g | C: 0g
         </div>
+
+        <!-- TENDINA DETTAGLI NUTRIENTI TOTALE GIORNATA -->
+        <details class="macro-details-accordion" style="margin-top: 6px;">
+            <summary style="font-size: 0.8rem;">📊 Dettagli Nutrienti Totale Giornata</summary>
+            <div class="macro-details-content" id="ext-Totale" style="padding: 8px; font-size: 0.78rem;">
+                <div>🍬 Zuccheri: <strong>0g</strong></div>
+                <div>BAC Saturi: <strong>0g</strong></div>
+                <div>🧂 Sale: <strong>0g</strong></div>
+            </div>
+        </details>
 
         <hr style="margin: 12px 0; border: 0; border-top: 1px solid var(--border);">
 
@@ -759,6 +841,20 @@
                 <input type="number" id="newFoodC" step="0.1" placeholder="0.5">
             </div>
         </div>
+        <div class="row">
+            <div class="form-group">
+                <label for="newFoodZuccheri">di cui Zuccheri (g)</label>
+                <input type="number" id="newFoodZuccheri" step="0.1" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="newFoodSaturi">di cui Saturi (g)</label>
+                <input type="number" id="newFoodSaturi" step="0.1" placeholder="0">
+            </div>
+            <div class="form-group">
+                <label for="newFoodSale">Sale (g)</label>
+                <input type="number" id="newFoodSale" step="0.1" placeholder="0">
+            </div>
+        </div>
         <button onclick="addNewFoodToDatabase()" style="width: 100%; margin-top: 6px; padding: 8px;">Salva Alimento</button>
 
         <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
@@ -826,24 +922,24 @@
     const GITHUB_EXCEL_URL = 'https://raw.githubusercontent.com/Luxipher82/nutritraker/main/database.xlsx';
 
     const BASE_FOOD_DATABASE = [
-        { marca: 'Primia', nome: 'Yogurt Greco', kcal: 58, c: 4.5, g: 0.1, p: 10, porzione_g: 150 },
-        { marca: 'Primia', nome: 'Pasta', kcal: 307, c: 61, g: 1.1, p: 12, porzione_g: 80 },
-        { marca: '', nome: 'Olio Extravergine', kcal: 900, c: 0, g: 100, p: 0, porzione_g: 10 },
-        { marca: 'Santa Lucia', nome: 'Ricotta Light', kcal: 112, c: 5.5, g: 6, p: 9, porzione_g: 90 },
-        { marca: 'Del Zoppo', nome: 'Bresaola', kcal: 165, c: 0.5, g: 3, p: 34, porzione_g: 50 },
-        { marca: 'Mare Blù', nome: 'Tonno Vero Naturale', kcal: 103, c: 0, g: 0.8, p: 24, porzione_g: 56 },
-        { marca: 'Rizzoli', nome: 'Sgombro', kcal: 119, c: 0, g: 3, p: 23, porzione_g: 90 },
-        { marca: 'Mulino Bianco', nome: 'Pane a Fette Integrale', kcal: 275, c: 38, g: 6.8, p: 11, porzione_g: 23 },
-        { marca: 'Primia', nome: 'Riso Parboiled', kcal: 349, c: 78, g: 0.8, p: 6.9, porzione_g: 80 },
-        { marca: 'Primia', nome: 'Riso Basmati', kcal: 354, c: 80, g: 0.4, p: 6.7, porzione_g: 80 },
-        { marca: '', nome: 'Petto di Pollo', kcal: 96, c: 0, g: 0.6, p: 22, porzione_g: 150 },
-        { marca: 'Ferrarini', nome: 'Prosciutto Cotto', kcal: 158, c: 0.4, g: 8.5, p: 19.6, porzione_g: 60 },
-        { marca: 'Fiorentini', nome: 'Avena', kcal: 403, c: 59, g: 6.3, p: 21, porzione_g: 40 },
-        { marca: 'Filippi', nome: 'Avena', kcal: 364, c: 60, g: 6.2, p: 12, porzione_g: 40 },
-        { marca: 'Mila', nome: 'Latte Parzialmente Scremato No Lattosio', kcal: 47, c: 4.9, g: 1.6, p: 3.2, porzione_g: 200 },
-        { marca: '', nome: 'Pane Integrale', kcal: 253, c: 55.4, g: 1, p: 9, porzione_g: 50 },
-        { marca: '', nome: 'Banana', kcal: 93, c: 20, g: 0.2, p: 1.2, porzione_g: 120 },
-        { marca: '', nome: 'Mela', kcal: 52, c: 14, g: 0.2, p: 0.3, porzione_g: 150 }
+        { marca: 'Primia', nome: 'Yogurt Greco', kcal: 58, c: 4.5, g: 0.1, p: 10, zuccheri: 4.0, saturi: 0.0, sale: 0.1, porzione_g: 150 },
+        { marca: 'Primia', nome: 'Pasta', kcal: 307, c: 61, g: 1.1, p: 12, zuccheri: 2.0, saturi: 0.2, sale: 0.01, porzione_g: 80 },
+        { marca: '', nome: 'Olio Extravergine', kcal: 900, c: 0, g: 100, p: 0, zuccheri: 0, saturi: 14, sale: 0, porzione_g: 10 },
+        { marca: 'Santa Lucia', nome: 'Ricotta Light', kcal: 112, c: 5.5, g: 6, p: 9, zuccheri: 3.5, saturi: 4.1, sale: 0.4, porzione_g: 90 },
+        { marca: 'Del Zoppo', nome: 'Bresaola', kcal: 165, c: 0.5, g: 3, p: 34, zuccheri: 0.1, saturi: 1.1, sale: 3.5, porzione_g: 50 },
+        { marca: 'Mare Blù', nome: 'Tonno Vero Naturale', kcal: 103, c: 0, g: 0.8, p: 24, zuccheri: 0, saturi: 0.2, sale: 1.1, porzione_g: 56 },
+        { marca: 'Rizzoli', nome: 'Sgombro', kcal: 119, c: 0, g: 3, p: 23, zuccheri: 0, saturi: 0.8, sale: 1.2, porzione_g: 90 },
+        { marca: 'Mulino Bianco', nome: 'Pane a Fette Integrale', kcal: 275, c: 38, g: 6.8, p: 11, zuccheri: 5.5, saturi: 0.9, sale: 1.3, porzione_g: 23 },
+        { marca: 'Primia', nome: 'Riso Parboiled', kcal: 349, c: 78, g: 0.8, p: 6.9, zuccheri: 0.2, saturi: 0.2, sale: 0.01, porzione_g: 80 },
+        { marca: 'Primia', nome: 'Riso Basmati', kcal: 354, c: 80, g: 0.4, p: 6.7, zuccheri: 0.1, saturi: 0.1, sale: 0.01, porzione_g: 80 },
+        { marca: '', nome: 'Petto di Pollo', kcal: 96, c: 0, g: 0.6, p: 22, zuccheri: 0, saturi: 0.2, sale: 0.1, porzione_g: 150 },
+        { marca: 'Ferrarini', nome: 'Prosciutto Cotto', kcal: 158, c: 0.4, g: 8.5, p: 19.6, zuccheri: 0.4, saturi: 3.2, sale: 1.8, porzione_g: 60 },
+        { marca: 'Fiorentini', nome: 'Avena', kcal: 403, c: 59, g: 6.3, p: 21, zuccheri: 1.2, saturi: 1.1, sale: 0.02, porzione_g: 40 },
+        { marca: 'Filippi', nome: 'Avena', kcal: 364, c: 60, g: 6.2, p: 12, zuccheri: 1.1, saturi: 1.0, sale: 0.02, porzione_g: 40 },
+        { marca: 'Mila', nome: 'Latte Parzialmente Scremato No Lattosio', kcal: 47, c: 4.9, g: 1.6, p: 3.2, zuccheri: 4.9, saturi: 1.0, sale: 0.1, porzione_g: 200 },
+        { marca: '', nome: 'Pane Integrale', kcal: 253, c: 55.4, g: 1, p: 9, zuccheri: 3.2, saturi: 0.2, sale: 1.2, porzione_g: 50 },
+        { marca: '', nome: 'Banana', kcal: 93, c: 20, g: 0.2, p: 1.2, zuccheri: 12, saturi: 0.05, sale: 0.01, porzione_g: 120 },
+        { marca: '', nome: 'Mela', kcal: 52, c: 14, g: 0.2, p: 0.3, zuccheri: 10, saturi: 0.03, sale: 0.01, porzione_g: 150 }
     ];
 
     let FOOD_DATABASE = [...BASE_FOOD_DATABASE];
@@ -854,7 +950,8 @@
     let recipeDraftIngredients = [];
 
     let currentSex = 'M';
-    let editingEntryDate = null; // Memorizza la data in fase di modifica dallo storico
+    let editingEntryDate = null;
+    let frozenTodayDraft = null; // Memorizza la bozza odierna mentre si modifica una data passata
 
     let appData = {
         userName: '',
@@ -1021,6 +1118,9 @@
                     c: parseFloat(item['carboidrati']) || 0,
                     g: parseFloat(item['grassi']) || 0,
                     p: parseFloat(item['proteine']) || 0,
+                    zuccheri: parseFloat(item['zuccheri']) || 0,
+                    saturi: parseFloat(item['saturi']) || 0,
+                    sale: parseFloat(item['sale']) || 0,
                     porzione_g: parseFloat(item['peso per porzione']) || 100
                 });
             }
@@ -1095,7 +1195,6 @@
     }
 
     function autoSaveDraft() {
-        // Se si sta modificando una giornata passata dello storico, non sovrascrivere la bozza di oggi
         if (editingEntryDate) return;
 
         const todayStr = new Date().toLocaleDateString('it-IT');
@@ -1110,9 +1209,11 @@
     }
 
     function loadDraftFromStorage() {
-        editingEntryDate = null; // Resetta qualsiasi stato di modifica attivo
+        editingEntryDate = null;
+        frozenTodayDraft = null;
+        document.getElementById('editingBanner').style.display = 'none';
+
         const todayStr = new Date().toLocaleDateString('it-IT');
-        
         const existingEntry = appData.entries.find(e => e.date === todayStr && e.profileSex === currentSex);
         
         if (existingEntry) {
@@ -1412,6 +1513,9 @@
             const rawP = parseFloat(match.p || match['proteine']) || 0;
             const rawG = parseFloat(match.g || match['grassi']) || 0;
             const rawC = parseFloat(match.c || match['carboidrati']) || 0;
+            const rawZ = parseFloat(match.zuccheri) || 0;
+            const rawS = parseFloat(match.saturi) || 0;
+            const rawSale = parseFloat(match.sale) || 0;
 
             const marcaStr = match.marca || match['marca'] || '';
             const nomeStr = match.nome || match['alimento'] || match['nome'] || inputName;
@@ -1424,7 +1528,10 @@
                 kcal: Math.round(rawKcal * factor),
                 p: Math.round(rawP * factor * 10) / 10,
                 g: Math.round(rawG * factor * 10) / 10,
-                c: Math.round(rawC * factor * 10) / 10
+                c: Math.round(rawC * factor * 10) / 10,
+                zuccheri: Math.round(rawZ * factor * 10) / 10,
+                saturi: Math.round(rawS * factor * 10) / 10,
+                sale: Math.round(rawSale * factor * 100) / 100
             });
         } else {
             if (!grams || isNaN(grams)) grams = 100;
@@ -1433,7 +1540,7 @@
                 meal: meal,
                 nome: inputName,
                 grams: grams,
-                kcal: 0, p: 0, g: 0, c: 0
+                kcal: 0, p: 0, g: 0, c: 0, zuccheri: 0, saturi: 0, sale: 0
             });
         }
 
@@ -1457,22 +1564,28 @@
             document.getElementById(`list-${meal}`).innerHTML = '';
         });
 
-        let totKcal = 0, totP = 0, totG = 0, totC = 0;
+        let totKcal = 0, totP = 0, totG = 0, totC = 0, totZ = 0, totSat = 0, totSale = 0;
 
         meals.forEach(meal => {
             const mealItems = currentDayFoods.filter(f => f.meal === meal);
-            let mKcal = 0, mP = 0, mG = 0, mC = 0;
+            let mKcal = 0, mP = 0, mG = 0, mC = 0, mZ = 0, mSat = 0, mSale = 0;
 
             mealItems.forEach(item => {
                 mKcal += (item.kcal || 0);
                 mP += (item.p || 0);
                 mG += (item.g || 0);
                 mC += (item.c || 0);
+                mZ += (item.zuccheri || 0);
+                mSat += (item.saturi || 0);
+                mSale += (item.sale || 0);
 
                 totKcal += (item.kcal || 0);
                 totP += (item.p || 0);
                 totG += (item.g || 0);
                 totC += (item.c || 0);
+                totZ += (item.zuccheri || 0);
+                totSat += (item.saturi || 0);
+                totSale += (item.sale || 0);
 
                 const list = document.getElementById(`list-${item.meal}`);
                 const li = document.createElement('li');
@@ -1488,11 +1601,31 @@
 
             document.getElementById(`subtotal-${meal}`).textContent = 
                 `Pasto: ${mKcal} kcal | P: ${mP.toFixed(1)}g | G: ${mG.toFixed(1)}g | C: ${mC.toFixed(1)}g`;
+
+            // Aggiorna tendina dettagli per singolo pasto
+            const extDiv = document.getElementById(`ext-${meal}`);
+            if (extDiv) {
+                extDiv.innerHTML = `
+                    <div>🍬 Zuccheri: <strong>${mZ.toFixed(1)}g</strong></div>
+                    <div>🥓 Saturi: <strong>${mSat.toFixed(1)}g</strong></div>
+                    <div>🧂 Sale: <strong>${mSale.toFixed(2)}g</strong></div>
+                `;
+            }
         });
 
         document.getElementById('consumedKcalMain').textContent = totKcal;
         document.getElementById('totals').textContent = 
             `Totale Giornata: ${totKcal} kcal | P: ${totP.toFixed(1)}g | G: ${totG.toFixed(1)}g | C: ${totC.toFixed(1)}g`;
+
+        // Aggiorna tendina dettagli totale giornata
+        const extTot = document.getElementById('ext-Totale');
+        if (extTot) {
+            extTot.innerHTML = `
+                <div>🍬 Zuccheri: <strong>${totZ.toFixed(1)}g</strong></div>
+                <div>BAC Saturi: <strong>${totSat.toFixed(1)}g</strong></div>
+                <div>🧂 Sale: <strong>${totSale.toFixed(2)}g</strong></div>
+            `;
+        }
     }
 
     function generateFeedback(totalKcal, targetKcal, waterMl) {
@@ -1522,12 +1655,15 @@
         const prof = appData.profiles[currentSex];
         const totBurned = currentDayActivities.reduce((acc, a) => acc + a.kcal, 0);
 
-        let totKcal = 0, totP = 0, totG = 0, totC = 0;
+        let totKcal = 0, totP = 0, totG = 0, totC = 0, totZ = 0, totSat = 0, totSale = 0;
         currentDayFoods.forEach(i => {
             totKcal += (i.kcal || 0); 
             totP += (i.p || 0); 
             totG += (i.g || 0); 
             totC += (i.c || 0);
+            totZ += (i.zuccheri || 0);
+            totSat += (i.saturi || 0);
+            totSale += (i.sale || 0);
         });
 
         const mealsSummary = ['Colazione', 'Pranzo', 'Cena', 'Snack'].map(meal => {
@@ -1539,8 +1675,6 @@
             currentDayActivities.map(a => `${a.name} (${a.duration} min)`).join(', ') + ` [~${totBurned} kcal]` : 'Nessuna';
 
         const comment = generateFeedback(totKcal, prof.targetKcal, currentWaterMl);
-        
-        // Se si sta modificando una voce passata, mantieni la sua data originale, altrimenti usa la data di oggi
         const targetDateStr = editingEntryDate ? editingEntryDate : new Date().toLocaleDateString('it-IT');
 
         const newEntry = {
@@ -1555,6 +1689,9 @@
             totalProt: totP.toFixed(1),
             totalFat: totG.toFixed(1),
             totalCarb: totC.toFixed(1),
+            totalZuccheri: totZ.toFixed(1),
+            totalSaturi: totSat.toFixed(1),
+            totalSale: totSale.toFixed(2),
             comment: comment,
             rawFoods: [...currentDayFoods],
             rawActivities: [...currentDayActivities]
@@ -1570,10 +1707,9 @@
 
         saveDataToStorage();
 
-        // Se stavamo modificando una voce passata, ripristina la schermata di oggi al termine
+        // Se stavamo modificando una giornata passata, ripristina la bozza congelata di oggi
         if (editingEntryDate) {
-            editingEntryDate = null;
-            loadDraftFromStorage();
+            restoreTodayDraft();
         } else {
             autoSaveDraft();
         }
@@ -1619,16 +1755,23 @@
         if (!item) return;
 
         if (confirm(`Vuoi ripristinare i dati della giornata del ${item.date} nel diario principale per modificarli?`)) {
-            // Salva prima lo stato di oggi prima di sovrascriverlo con quello passato
-            autoSaveDraft();
+            // Congela la bozza odierna prima di sovrascriverla
+            if (!editingEntryDate) {
+                frozenTodayDraft = {
+                    currentDayFoods: [...currentDayFoods],
+                    currentDayActivities: [...currentDayActivities],
+                    currentWaterMl: currentWaterMl
+                };
+            }
 
             currentSex = item.profileSex;
             appData.activeSex = currentSex;
             document.getElementById('sexSelect').value = currentSex;
             loadProfileUI();
 
-            // Salva la data che stiamo modificando
             editingEntryDate = item.date;
+            document.getElementById('editingDateLabel').textContent = item.date;
+            document.getElementById('editingBanner').style.display = 'flex';
 
             currentDayFoods = item.rawFoods ? [...item.rawFoods] : [];
             currentDayActivities = item.rawActivities ? [...item.rawActivities] : [];
@@ -1639,6 +1782,27 @@
             updateWaterDisplay();
 
             toggleDrawer('historyDrawer');
+        }
+    }
+
+    function cancelEditingHistory() {
+        restoreTodayDraft();
+    }
+
+    function restoreTodayDraft() {
+        editingEntryDate = null;
+        document.getElementById('editingBanner').style.display = 'none';
+
+        if (frozenTodayDraft) {
+            currentDayFoods = [...frozenTodayDraft.currentDayFoods];
+            currentDayActivities = [...frozenTodayDraft.currentDayActivities];
+            currentWaterMl = frozenTodayDraft.currentWaterMl;
+            frozenTodayDraft = null;
+            updateTodaySummary();
+            updateActivitiesSummary();
+            updateWaterDisplay();
+        } else {
+            loadDraftFromStorage();
         }
     }
 
@@ -1798,13 +1962,16 @@
                     return label === ing.nome.toLowerCase() || nomeStr === ing.nome.toLowerCase();
                 });
 
-                let kcal = 0, p = 0, g = 0, c = 0;
+                let kcal = 0, p = 0, g = 0, c = 0, zuccheri = 0, saturi = 0, sale = 0;
                 if (match) {
                     const factor = ing.grams / 100;
                     kcal = Math.round((match.kcal || match['kcal'] || 0) * factor);
                     p = Math.round((match.p || match['proteine'] || 0) * factor * 10) / 10;
                     g = Math.round((match.g || match['grassi'] || 0) * factor * 10) / 10;
                     c = Math.round((match.c || match['carboidrati'] || 0) * factor * 10) / 10;
+                    zuccheri = Math.round((match.zuccheri || 0) * factor * 10) / 10;
+                    saturi = Math.round((match.saturi || 0) * factor * 10) / 10;
+                    sale = Math.round((match.sale || 0) * factor * 100) / 100;
                 }
 
                 currentDayFoods.push({
@@ -1812,7 +1979,8 @@
                     meal: mealTarget,
                     nome: ing.nome,
                     grams: ing.grams,
-                    kcal: kcal, p: p, g: g, c: c
+                    kcal: kcal, p: p, g: g, c: c,
+                    zuccheri: zuccheri, saturi: saturi, sale: sale
                 });
             });
             updateTodaySummary();
@@ -1870,13 +2038,16 @@
         const p = parseFloat(document.getElementById('newFoodP').value) || 0;
         const g = parseFloat(document.getElementById('newFoodG').value) || 0;
         const c = parseFloat(document.getElementById('newFoodC').value) || 0;
+        const zuccheri = parseFloat(document.getElementById('newFoodZuccheri').value) || 0;
+        const saturi = parseFloat(document.getElementById('newFoodSaturi').value) || 0;
+        const sale = parseFloat(document.getElementById('newFoodSale').value) || 0;
 
         if (!name || isNaN(kcal)) {
             alert("Inserisci il nome e le Kcal dell'alimento.");
             return;
         }
 
-        const newFood = { marca: 'Personalizzato', nome: name, kcal: kcal, c: c, g: g, p: p, porzione_g: 100 };
+        const newFood = { marca: 'Personalizzato', nome: name, kcal: kcal, c: c, g: g, p: p, zuccheri: zuccheri, saturi: saturi, sale: sale, porzione_g: 100 };
         FOOD_DATABASE.push(newFood);
 
         const customFoods = JSON.parse(localStorage.getItem('customFoodsDatabase') || '[]');
@@ -1890,6 +2061,9 @@
         document.getElementById('newFoodP').value = '';
         document.getElementById('newFoodG').value = '';
         document.getElementById('newFoodC').value = '';
+        document.getElementById('newFoodZuccheri').value = '';
+        document.getElementById('newFoodSaturi').value = '';
+        document.getElementById('newFoodSale').value = '';
         toggleDrawer('addFoodDrawer');
     }
 </script>
