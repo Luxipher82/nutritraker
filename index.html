@@ -10,13 +10,13 @@
     <!-- Libreria SheetJS per leggere file Excel (.xlsx) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
-        /* TEMA BASE: UOMO (Header Fucsia, Corpo Azzurro chiaro) */
+        /* TEMA UOMO: Header Fucsia, Corpo Azzurro */
         :root {
             --primary: #ec4899;
             --primary-hover: #db2777;
             --header-bg: #ec4899;
             --header-text: #ffffff;
-            --bg-color: #f0f9ff;
+            --bg-color: #e0f2fe; /* Tonalità Blu Chiaro per l'Uomo */
             --card-bg: #ffffff;
             --text: #1e293b;
             --text-muted: #64748b;
@@ -26,13 +26,13 @@
             --radius: 12px;
         }
 
-        /* TEMA DONNA: (Header Azzurrino, Corpo Rosa chiaro) */
+        /* TEMA DONNA: Header Azzurro, Corpo Rosa */
         body.theme-female {
             --primary: #818cf8;
             --primary-hover: #6366f1;
             --header-bg: #818cf8;
             --header-text: #ffffff;
-            --bg-color: #fff1f2;
+            --bg-color: #ffe4e6; /* Tonalità Rosa Chiaro per la Donna */
             --border: #fbcfe8;
         }
 
@@ -144,7 +144,6 @@
             border: 1px solid var(--border);
         }
 
-        /* PULSANTE ELIMINA PICCOLO E COMPATTO (QUADRATINO ROSSO) */
         .btn-danger-square {
             background-color: var(--danger);
             color: white;
@@ -236,7 +235,6 @@
             line-height: 1;
         }
 
-        /* FUMETTO POP-UP DI PRESENTAZIONE */
         .speech-bubble-container {
             display: none;
             position: absolute;
@@ -339,6 +337,12 @@
 
         .meal-items li:last-child {
             border-bottom: none;
+        }
+
+        .food-macro-details {
+            font-size: 0.73rem;
+            color: var(--text-muted);
+            font-weight: normal;
         }
 
         .meal-subtotal {
@@ -507,7 +511,7 @@
         </div>
     </div>
 
-    <!-- IDRATAZIONE ACQUA (WIDGET RAPIDO IN PRIMO PIANO) -->
+    <!-- IDRATAZIONE ACQUA -->
     <div class="card">
         <div class="water-box">
             <div>
@@ -524,7 +528,7 @@
         </div>
     </div>
 
-    <!-- TARGET CALORICO CON PROGRESSIONE GIORNALIERA -->
+    <!-- TARGET CALORICO -->
     <div class="card" style="padding: 10px 12px;">
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 0.88rem; font-weight: 600;">Target Calorico:</span>
@@ -892,17 +896,15 @@
 
         syncDatabaseFromGithub(false);
 
-        // AUTO-AGGIORNAMENTO SERVICE WORKER PER TUTTI I DISPOSITIVI
+        // AUTO-AGGIORNAMENTO SERVICE WORKER
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').then(reg => {
-                // Forza il controllo di una nuova versione del file sw.js su GitHub ad ogni avvio
                 reg.update();
 
                 reg.onupdatefound = () => {
                     const installingWorker = reg.installing;
                     installingWorker.onstatechange = () => {
                         if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            // Trovata nuova versione: ricarica la pagina per applicarla
                             window.location.reload();
                         }
                     };
@@ -1106,7 +1108,6 @@
     function loadDraftFromStorage() {
         const todayStr = new Date().toLocaleDateString('it-IT');
         
-        // 1. Cerca prima se c'è già una registrazione salvata oggi per questo profilo nello storico
         const existingEntry = appData.entries.find(e => e.date === todayStr && e.profileSex === currentSex);
         
         if (existingEntry) {
@@ -1119,7 +1120,6 @@
             return;
         }
 
-        // 2. Altrimenti carica la bozza del giorno corrente dal localStorage
         const draftStr = localStorage.getItem(`todayDraftNutriTracker_${currentSex}`);
         if (draftStr) {
             try {
@@ -1133,13 +1133,11 @@
                     updateWaterDisplay();
                     return;
                 } else {
-                    // È iniziato un nuovo giorno: azzera per la nuova giornata
                     localStorage.removeItem(`todayDraftNutriTracker_${currentSex}`);
                 }
             } catch(e){}
         }
 
-        // 3. Nessun dato per oggi: resetta l'interfaccia a zero
         currentDayFoods = [];
         currentDayActivities = [];
         currentWaterMl = 0;
@@ -1473,8 +1471,12 @@
 
                 const list = document.getElementById(`list-${item.meal}`);
                 const li = document.createElement('li');
+                // MOSTRA I MACRONUTRIENTI PER IL SINGOLO CIBO
                 li.innerHTML = `
-                    <span>${item.nome} (${item.grams}g) - <strong>${item.kcal} kcal</strong></span>
+                    <div style="display: flex; flex-direction: column;">
+                        <span>${item.nome} (${item.grams}g) - <strong>${item.kcal} kcal</strong></span>
+                        <span class="food-macro-details">P: ${item.p}g | G: ${item.g}g | C: ${item.c}g</span>
+                    </div>
                     <button type="button" class="btn-danger-square" onclick="removeFood(${item.id})" title="Elimina">✕</button>
                 `;
                 list.appendChild(li);
