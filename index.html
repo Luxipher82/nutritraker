@@ -994,7 +994,6 @@
 
         syncDatabaseFromGithub(false);
 
-        // AUTO-AGGIORNAMENTO SERVICE WORKER
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').then(reg => {
                 reg.update();
@@ -1070,7 +1069,7 @@
             .then(buffer => {
                 parseExcelArrayBuffer(buffer);
                 if (showSuccessAlert) {
-                    alert("✅ Database aggiornato con successo");
+                    alert("✅ Database sincronizzato ed aggiornato con successo!");
                 }
             })
             .catch(() => {
@@ -1080,7 +1079,7 @@
             });
     }
 
-    // LETTURA CORRETTA DI TUTTE LE COLONNE EXCEL (INCLUSI ZUCCHERI, SATURI E SALE)
+    /* PARSING EXCEL CON PULIZIA TOTALE DEGLI SPAZI E CASE-INSENSITIVE SU TUTTE LE COLONNE */
     function parseExcelArrayBuffer(dataBuffer) {
         const data = new Uint8Array(dataBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
@@ -1098,9 +1097,9 @@
 
         if (headerIndex === -1) return;
 
-        const headers = rows[headerIndex].map(h => String(h).trim().toLowerCase());
+        // Pulisce in modo rigoroso tutte le intestazioni rimuovendo qualsiasi spazio nascosto
+        const headers = rows[headerIndex].map(h => String(h).toLowerCase().replace(/\s+/g, ''));
 
-        // Identifica gli indici delle colonne
         const getIdx = (keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
 
         const idxMarca = getIdx(['marca']);
@@ -1112,26 +1111,32 @@
         const idxZ = getIdx(['zuccheri', 'zucchero']);
         const idxS = getIdx(['saturi', 'saturo']);
         const idxSale = getIdx(['sale', 'sodio']);
-        const idxPorzione = getIdx(['porzione', 'peso per porzione']);
+        const idxPorzione = getIdx(['porzione', 'pesoperporzione']);
 
         const importedFoods = [];
         for (let i = headerIndex + 1; i < rows.length; i++) {
             const row = rows[i];
             if (!row || row.every(val => val === "")) continue;
 
+            const parseVal = (idx) => {
+                if (idx === -1 || row[idx] === undefined || row[idx] === null || row[idx] === "") return 0;
+                let valStr = String(row[idx]).replace(',', '.');
+                return parseFloat(valStr) || 0;
+            };
+
             const nomeStr = idxNome !== -1 ? String(row[idxNome] || '').trim() : '';
             if (nomeStr !== "") {
                 importedFoods.push({
-                    marca: idxMarca !== -1 ? String(row[idxMarca] || '') : '',
+                    marca: idxMarca !== -1 ? String(row[idxMarca] || '').trim() : '',
                     nome: nomeStr,
-                    kcal: idxKcal !== -1 ? parseFloat(row[idxKcal]) || 0 : 0,
-                    c: idxC !== -1 ? parseFloat(row[idxC]) || 0 : 0,
-                    g: idxG !== -1 ? parseFloat(row[idxG]) || 0 : 0,
-                    p: idxP !== -1 ? parseFloat(row[idxP]) || 0 : 0,
-                    zuccheri: idxZ !== -1 ? parseFloat(row[idxZ]) || 0 : 0,
-                    saturi: idxS !== -1 ? parseFloat(row[idxS]) || 0 : 0,
-                    sale: idxSale !== -1 ? parseFloat(row[idxSale]) || 0 : 0,
-                    porzione_g: idxPorzione !== -1 ? parseFloat(row[idxPorzione]) || 100 : 100
+                    kcal: parseVal(idxKcal),
+                    c: parseVal(idxC),
+                    g: parseVal(idxG),
+                    p: parseVal(idxP),
+                    zuccheri: parseVal(idxZ),
+                    saturi: parseVal(idxS),
+                    sale: parseVal(idxSale),
+                    porzione_g: idxPorzione !== -1 && parseVal(idxPorzione) > 0 ? parseVal(idxPorzione) : 100
                 });
             }
         }
@@ -1139,6 +1144,7 @@
         if (importedFoods.length > 0) {
             FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...importedFoods];
             localStorage.setItem('customFoodsDatabase', JSON.stringify(importedFoods));
+            updateTodaySummary();
         }
     }
 
@@ -1475,18 +1481,18 @@
         }
 
         const matches = FOOD_DATABASE.filter(f => {
-            const marcaStr = String(f.marca || f['marca'] || '').toLowerCase();
-            const nomeStr = String(f.nome || f['alimento'] || f['nome'] || '').toLowerCase();
+            const marcaStr = String(f.marca || '').toLowerCase();
+            const nomeStr = String(f.nome || '').toLowerCase();
             const fullText = (marcaStr + " " + nomeStr).trim();
             return fullText.includes(query) || nomeStr.includes(query) || marcaStr.includes(query);
         });
 
         if (matches.length > 0) {
             resultsDiv.innerHTML = matches.map(f => {
-                const marca = f.marca || f['marca'] || '';
-                const nome = f.nome || f['alimento'] || f['nome'] || 'Alimento';
+                const marca = f.marca || '';
+                const nome = f.nome || 'Alimento';
                 const label = (marca && marca !== 'WEB') ? `${nome} (${marca})` : nome;
-                const portion = f.porzione_g || f['peso per porzione'] || 100;
+                const portion = f.porzione_g || 100;
                 return `<div class="autocomplete-item" onclick="selectFoodForMeal('${meal}', '${label.replace(/'/g, "\\'")}', ${portion})">${label}</div>`;
             }).join('');
             resultsDiv.style.display = 'block';
@@ -1501,6 +1507,7 @@
         document.getElementById(`searchResults-${meal}`).style.display = 'none';
     }
 
+    /* INSERIMENTO ALIMENTO NEL PASTO CON ACQUISIZIONE CORRETTA DEGLI ZUCCHERI */
     function addFoodToMeal(meal) {
         const inputName = document.getElementById(`foodInput-${meal}`).value.trim();
         let grams = parseFloat(document.getElementById(`foodGrams-${meal}`).value);
@@ -1508,27 +1515,27 @@
         if (!inputName) return;
 
         const match = FOOD_DATABASE.find(f => {
-            const marcaStr = String(f.marca || f['marca'] || '').toLowerCase();
-            const nomeStr = String(f.nome || f['alimento'] || f['nome'] || '').toLowerCase();
+            const marcaStr = String(f.marca || '').toLowerCase();
+            const nomeStr = String(f.nome || '').toLowerCase();
             const label = (marcaStr && marcaStr !== 'web') ? `${nomeStr} (${marcaStr})` : nomeStr;
             return label === inputName.toLowerCase() || nomeStr === inputName.toLowerCase();
         });
 
         if (match) {
-            const defaultPortion = parseFloat(match.porzione_g || match['peso per porzione']) || 100;
+            const defaultPortion = parseFloat(match.porzione_g) || 100;
             if (!grams || isNaN(grams)) grams = defaultPortion;
             const factor = grams / 100;
             
-            const rawKcal = parseFloat(match.kcal || match['kcal']) || 0;
-            const rawP = parseFloat(match.p || match['proteine']) || 0;
-            const rawG = parseFloat(match.g || match['grassi']) || 0;
-            const rawC = parseFloat(match.c || match['carboidrati']) || 0;
+            const rawKcal = parseFloat(match.kcal) || 0;
+            const rawP = parseFloat(match.p) || 0;
+            const rawG = parseFloat(match.g) || 0;
+            const rawC = parseFloat(match.c) || 0;
             const rawZ = parseFloat(match.zuccheri) || 0;
             const rawS = parseFloat(match.saturi) || 0;
             const rawSale = parseFloat(match.sale) || 0;
 
-            const marcaStr = match.marca || match['marca'] || '';
-            const nomeStr = match.nome || match['alimento'] || match['nome'] || inputName;
+            const marcaStr = match.marca || '';
+            const nomeStr = match.nome || inputName;
 
             currentDayFoods.push({
                 id: Date.now() + Math.random(),
@@ -1630,7 +1637,7 @@
         if (extTot) {
             extTot.innerHTML = `
                 <div>🍬 Zuccheri: <strong>${totZ.toFixed(1)}g</strong></div>
-                <div>BAC Saturi: <strong>${totSat.toFixed(1)}g</strong></div>
+                <div>🥓 Saturi: <strong>${totSat.toFixed(1)}g</strong></div>
                 <div>🧂 Sale: <strong>${totSale.toFixed(2)}g</strong></div>
             `;
         }
@@ -1725,7 +1732,6 @@
         toggleDrawer('historyDrawer');
     }
 
-    // RIMODULAZIONE COMPATTA DELLO STORICO CON TENDINA COMPLETA
     function renderHistory() {
         const entries = appData.entries;
         const historyList = document.getElementById('historyList');
@@ -1748,12 +1754,10 @@
                     </div>
                 </div>
 
-                <!-- 1. VISTA COMPATTA: Solo i 4 Macro Principali -->
                 <div style="font-size: 0.82rem; font-weight: 700; color: var(--primary); margin: 4px 0;">
                     🔥 ${item.totalKcal} kcal <span style="font-weight:normal; color:var(--text-muted);">| P: ${item.totalProt}g | G: ${item.totalFat}g | C: ${item.totalCarb}g</span>
                 </div>
 
-                <!-- 2. TENDINA DETTAGLIATA COLLAPSIBLE -->
                 <details class="macro-details-accordion">
                     <summary style="font-size: 0.76rem;">🔽 Dettagli & Feedback</summary>
                     <div class="history-details" style="margin-top:6px; line-height: 1.4; background: var(--bg-color); padding: 8px; border-radius: 8px;">
@@ -1870,16 +1874,16 @@
         if (!inputName || !grams) return;
 
         const match = FOOD_DATABASE.find(f => {
-            const marcaStr = String(f.marca || f['marca'] || '').toLowerCase();
-            const nomeStr = String(f.nome || f['alimento'] || f['nome'] || '').toLowerCase();
+            const marcaStr = String(f.marca || '').toLowerCase();
+            const nomeStr = String(f.nome || '').toLowerCase();
             const label = (marcaStr && marcaStr !== 'web') ? `${nomeStr} (${marcaStr})` : nomeStr;
             return label === inputName.toLowerCase() || nomeStr === inputName.toLowerCase();
         });
 
         let finalName = inputName;
         if (match) {
-            const marcaStr = match.marca || match['marca'] || '';
-            const nomeStr = match.nome || match['alimento'] || match['nome'] || inputName;
+            const marcaStr = match.marca || '';
+            const nomeStr = match.nome || inputName;
             finalName = (marcaStr && marcaStr !== 'WEB' && marcaStr !== '') ? `${nomeStr} (${marcaStr})` : nomeStr;
         }
 
@@ -1973,8 +1977,8 @@
             const recipe = appData.recipes[idx];
             recipe.ingredients.forEach(ing => {
                 const match = FOOD_DATABASE.find(f => {
-                    const marcaStr = String(f.marca || f['marca'] || '').toLowerCase();
-                    const nomeStr = String(f.nome || f['alimento'] || f['nome'] || '').toLowerCase();
+                    const marcaStr = String(f.marca || '').toLowerCase();
+                    const nomeStr = String(f.nome || '').toLowerCase();
                     const label = (marcaStr && marcaStr !== 'web') ? `${nomeStr} (${marcaStr})` : nomeStr;
                     return label === ing.nome.toLowerCase() || nomeStr === ing.nome.toLowerCase();
                 });
@@ -1982,10 +1986,10 @@
                 let kcal = 0, p = 0, g = 0, c = 0, zuccheri = 0, saturi = 0, sale = 0;
                 if (match) {
                     const factor = ing.grams / 100;
-                    kcal = Math.round((match.kcal || match['kcal'] || 0) * factor);
-                    p = Math.round((match.p || match['proteine'] || 0) * factor * 10) / 10;
-                    g = Math.round((match.g || match['grassi'] || 0) * factor * 10) / 10;
-                    c = Math.round((match.c || match['carboidrati'] || 0) * factor * 10) / 10;
+                    kcal = Math.round((match.kcal || 0) * factor);
+                    p = Math.round((match.p || 0) * factor * 10) / 10;
+                    g = Math.round((match.g || 0) * factor * 10) / 10;
+                    c = Math.round((match.c || 0) * factor * 10) / 10;
                     zuccheri = Math.round((match.zuccheri || 0) * factor * 10) / 10;
                     saturi = Math.round((match.saturi || 0) * factor * 10) / 10;
                     sale = Math.round((match.sale || 0) * factor * 100) / 100;
