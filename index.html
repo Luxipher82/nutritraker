@@ -698,7 +698,7 @@
             <summary style="font-size: 0.8rem;">📊 Dettagli Nutrienti Totale Giornata</summary>
             <div class="macro-details-content" id="ext-Totale" style="padding: 8px; font-size: 0.78rem;">
                 <div>🍬 Zuccheri: <strong>0g</strong></div>
-                <div>BAC Saturi: <strong>0g</strong></div>
+                <div>🥓 Saturi: <strong>0g</strong></div>
                 <div>🧂 Sale: <strong>0g</strong></div>
             </div>
         </details>
@@ -951,7 +951,7 @@
 
     let currentSex = 'M';
     let editingEntryDate = null;
-    let frozenTodayDraft = null; // Memorizza la bozza odierna mentre si modifica una data passata
+    let frozenTodayDraft = null;
 
     let appData = {
         userName: '',
@@ -1080,6 +1080,7 @@
             });
     }
 
+    // LETTURA CORRETTA DI TUTTE LE COLONNE EXCEL (INCLUSI ZUCCHERI, SATURI E SALE)
     function parseExcelArrayBuffer(dataBuffer) {
         const data = new Uint8Array(dataBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
@@ -1099,29 +1100,38 @@
 
         const headers = rows[headerIndex].map(h => String(h).trim().toLowerCase());
 
+        // Identifica gli indici delle colonne
+        const getIdx = (keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
+
+        const idxMarca = getIdx(['marca']);
+        const idxNome = getIdx(['alimento', 'nome']);
+        const idxKcal = getIdx(['kcal', 'calorie']);
+        const idxC = getIdx(['carboidrati']);
+        const idxG = getIdx(['grassi']);
+        const idxP = getIdx(['proteine']);
+        const idxZ = getIdx(['zuccheri', 'zucchero']);
+        const idxS = getIdx(['saturi', 'saturo']);
+        const idxSale = getIdx(['sale', 'sodio']);
+        const idxPorzione = getIdx(['porzione', 'peso per porzione']);
+
         const importedFoods = [];
         for (let i = headerIndex + 1; i < rows.length; i++) {
             const row = rows[i];
             if (!row || row.every(val => val === "")) continue;
 
-            let item = {};
-            headers.forEach((header, idx) => {
-                if (header) item[header] = row[idx] !== undefined ? row[idx] : "";
-            });
-
-            const nomeStr = String(item['alimento'] || item['nome'] || '').trim();
+            const nomeStr = idxNome !== -1 ? String(row[idxNome] || '').trim() : '';
             if (nomeStr !== "") {
                 importedFoods.push({
-                    marca: item['marca'] || '',
+                    marca: idxMarca !== -1 ? String(row[idxMarca] || '') : '',
                     nome: nomeStr,
-                    kcal: parseFloat(item['kcal']) || 0,
-                    c: parseFloat(item['carboidrati']) || 0,
-                    g: parseFloat(item['grassi']) || 0,
-                    p: parseFloat(item['proteine']) || 0,
-                    zuccheri: parseFloat(item['zuccheri']) || 0,
-                    saturi: parseFloat(item['saturi']) || 0,
-                    sale: parseFloat(item['sale']) || 0,
-                    porzione_g: parseFloat(item['peso per porzione']) || 100
+                    kcal: idxKcal !== -1 ? parseFloat(row[idxKcal]) || 0 : 0,
+                    c: idxC !== -1 ? parseFloat(row[idxC]) || 0 : 0,
+                    g: idxG !== -1 ? parseFloat(row[idxG]) || 0 : 0,
+                    p: idxP !== -1 ? parseFloat(row[idxP]) || 0 : 0,
+                    zuccheri: idxZ !== -1 ? parseFloat(row[idxZ]) || 0 : 0,
+                    saturi: idxS !== -1 ? parseFloat(row[idxS]) || 0 : 0,
+                    sale: idxSale !== -1 ? parseFloat(row[idxSale]) || 0 : 0,
+                    porzione_g: idxPorzione !== -1 ? parseFloat(row[idxPorzione]) || 100 : 100
                 });
             }
         }
@@ -1602,7 +1612,6 @@
             document.getElementById(`subtotal-${meal}`).textContent = 
                 `Pasto: ${mKcal} kcal | P: ${mP.toFixed(1)}g | G: ${mG.toFixed(1)}g | C: ${mC.toFixed(1)}g`;
 
-            // Aggiorna tendina dettagli per singolo pasto
             const extDiv = document.getElementById(`ext-${meal}`);
             if (extDiv) {
                 extDiv.innerHTML = `
@@ -1617,7 +1626,6 @@
         document.getElementById('totals').textContent = 
             `Totale Giornata: ${totKcal} kcal | P: ${totP.toFixed(1)}g | G: ${totG.toFixed(1)}g | C: ${totC.toFixed(1)}g`;
 
-        // Aggiorna tendina dettagli totale giornata
         const extTot = document.getElementById('ext-Totale');
         if (extTot) {
             extTot.innerHTML = `
@@ -1707,7 +1715,6 @@
 
         saveDataToStorage();
 
-        // Se stavamo modificando una giornata passata, ripristina la bozza congelata di oggi
         if (editingEntryDate) {
             restoreTodayDraft();
         } else {
@@ -1718,6 +1725,7 @@
         toggleDrawer('historyDrawer');
     }
 
+    // RIMODULAZIONE COMPATTA DELLO STORICO CON TENDINA COMPLETA
     function renderHistory() {
         const entries = appData.entries;
         const historyList = document.getElementById('historyList');
@@ -1739,13 +1747,23 @@
                         <button class="btn-danger-square" onclick="deleteHistoryEntry(${idx})" title="Elimina">✕</button>
                     </div>
                 </div>
-                <div class="history-details" style="margin-top:4px; line-height: 1.35;">
-                    🏃‍♂️ <strong>Attività:</strong> ${item.activityText}<br>
-                    💧 <strong>Acqua:</strong> ${item.waterMl || 0} ml<br>
-                    🥗 <strong>Pasti:</strong> ${item.foodSummary}<br>
-                    🔥 <strong>Macro:</strong> ~${item.totalKcal} kcal (P: ${item.totalProt}g | G: ${item.totalFat}g | C: ${item.totalCarb}g)
-                    <div class="feedback-box">💬 ${item.comment}</div>
+
+                <!-- 1. VISTA COMPATTA: Solo i 4 Macro Principali -->
+                <div style="font-size: 0.82rem; font-weight: 700; color: var(--primary); margin: 4px 0;">
+                    🔥 ${item.totalKcal} kcal <span style="font-weight:normal; color:var(--text-muted);">| P: ${item.totalProt}g | G: ${item.totalFat}g | C: ${item.totalCarb}g</span>
                 </div>
+
+                <!-- 2. TENDINA DETTAGLIATA COLLAPSIBLE -->
+                <details class="macro-details-accordion">
+                    <summary style="font-size: 0.76rem;">🔽 Dettagli & Feedback</summary>
+                    <div class="history-details" style="margin-top:6px; line-height: 1.4; background: var(--bg-color); padding: 8px; border-radius: 8px;">
+                        🥗 <strong>Pasti:</strong> ${item.foodSummary || 'Nessun pasto'}<br>
+                        📊 <strong>Micro Nutrienti:</strong> Zuccheri: ${item.totalZuccheri || 0}g | Saturi: ${item.totalSaturi || 0}g | Sale: ${item.totalSale || 0}g<br>
+                        🏃‍♂️ <strong>Attività:</strong> ${item.activityText}<br>
+                        💧 <strong>Acqua:</strong> ${item.waterMl || 0} ml
+                        <div class="feedback-box" style="background:#fff; margin-top:6px;">💬 ${item.comment}</div>
+                    </div>
+                </details>
             </div>
         `).join('');
     }
@@ -1755,7 +1773,6 @@
         if (!item) return;
 
         if (confirm(`Vuoi ripristinare i dati della giornata del ${item.date} nel diario principale per modificarli?`)) {
-            // Congela la bozza odierna prima di sovrascriverla
             if (!editingEntryDate) {
                 frozenTodayDraft = {
                     currentDayFoods: [...currentDayFoods],
