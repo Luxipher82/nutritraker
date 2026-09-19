@@ -24,6 +24,12 @@
             --success: #10b981;
             --danger: #ef4444;
             --radius: 12px;
+
+            /* Colori dei macronutrienti (barre di progresso e grafico a torta) */
+            --macro-p: #7c3aed;
+            --macro-c: #d97706;
+            --macro-g: #0d9488;
+            --macro-w: #0284c7;
         }
 
         /* TEMA DONNA: Header Azzurro, Corpo Rosa */
@@ -499,6 +505,170 @@
             border-radius: 8px;
             border: 1px solid var(--border);
         }
+
+        /* ===== BARRE DI PROGRESSO ===== */
+        .progress-item {
+            margin-bottom: 10px;
+        }
+
+        .progress-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .progress-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .progress-values {
+            font-weight: 500;
+            font-size: 0.74rem;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+            text-align: right;
+        }
+
+        .progress-track {
+            height: 10px;
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0;
+            border-radius: 999px;
+            background: var(--bar-color);
+            transition: width 0.45s ease, background-color 0.3s ease;
+        }
+
+        .progress-fill.done { background: var(--success); }
+        .progress-fill.over { background: var(--danger); }
+
+        .bar-p { --bar-color: var(--macro-p); }
+        .bar-c { --bar-color: var(--macro-c); }
+        .bar-g { --bar-color: var(--macro-g); }
+        .bar-w { --bar-color: var(--macro-w); }
+
+        /* ===== RIPARTIZIONE MACRO ===== */
+        .macro-sum-status {
+            font-size: 0.78rem;
+            font-weight: 600;
+            padding: 6px 10px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .macro-sum-status.ok {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .macro-sum-status.bad {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        #macroPieChart {
+            display: block;
+            width: 180px;
+            height: 180px;
+            margin: 6px auto;
+            background: transparent;
+            border: none;
+            transition: opacity 0.2s ease;
+        }
+
+        #macroPieChart.stale {
+            opacity: 0.35;
+        }
+
+        .macro-legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 4px 12px;
+            font-size: 0.76rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .legend-item i {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 3px;
+        }
+
+        .macro-grams-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        .macro-gram-box {
+            background: var(--bg-color);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 6px;
+            text-align: center;
+        }
+
+        .macro-gram-label {
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .macro-gram-value {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--text);
+            margin: 2px 0;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .macro-gram-sub {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .macro-note {
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+            line-height: 1.35;
+        }
+
+        /* ===== FEEDBACK TATTILE: FALLBACK VISIVO ===== */
+        @keyframes hapticPulse {
+            0% { transform: scale(1); }
+            40% { transform: scale(0.94); }
+            100% { transform: scale(1); }
+        }
+
+        .haptic-pulse {
+            animation: hapticPulse 0.16s ease-out;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .progress-fill { transition: none; }
+            .haptic-pulse { animation: none; }
+        }
     </style>
 </head>
 <body class="theme-female">
@@ -511,19 +681,19 @@
             <h2>NutriTracker</h2>
         </div>
         <div class="icon-btn-group">
-            <button class="icon-btn" onclick="toggleDrawer('profileDrawer')" title="Profilo">
+            <button class="icon-btn" data-haptic="tap" onclick="toggleDrawer('profileDrawer')" title="Profilo">
                 <span class="icon">👤</span>
                 <span>Profilo</span>
             </button>
-            <button class="icon-btn" onclick="toggleDrawer('addFoodDrawer')" title="Cibo">
+            <button class="icon-btn" data-haptic="tap" onclick="toggleDrawer('addFoodDrawer')" title="Cibo">
                 <span class="icon">➕</span>
                 <span>Cibo</span>
             </button>
-            <button class="icon-btn" onclick="toggleDrawer('recipesDrawer')" title="Pasti Salvati">
+            <button class="icon-btn" data-haptic="tap" onclick="toggleDrawer('recipesDrawer')" title="Pasti Salvati">
                 <span class="icon">🍲</span>
                 <span>Pasti</span>
             </button>
-            <button class="icon-btn" onclick="toggleDrawer('historyDrawer')" title="Storico">
+            <button class="icon-btn" data-haptic="tap" onclick="toggleDrawer('historyDrawer')" title="Storico">
                 <span class="icon">📋</span>
                 <span>Storico</span>
             </button>
@@ -533,7 +703,7 @@
         <div id="welcomeBubbleContainer" class="speech-bubble-container">
             <div class="speech-bubble">
                 <span id="welcomeMessageText"></span>
-                <button class="speech-bubble-close" onclick="closeWelcomeBubble()">✕</button>
+                <button class="speech-bubble-close" data-haptic="tap" onclick="closeWelcomeBubble()">✕</button>
             </div>
         </div>
     </div>
@@ -548,9 +718,9 @@
                 </div>
             </div>
             <div class="water-btn-group">
-                <button class="btn-secondary" onclick="addWater(-250)">-</button>
+                <button class="btn-secondary" data-haptic="tap" onclick="addWater(-250)">-</button>
                 <span id="waterCurrentDisplay" style="font-weight: bold; font-size: 0.85rem; min-width: 60px; text-align: center;">0 / 2000 ml</span>
-                <button onclick="addWater(250)">+</button>
+                <button data-haptic="tap" onclick="addWater(250)">+</button>
             </div>
         </div>
     </div>
@@ -568,11 +738,56 @@
         </div>
     </div>
 
+    <!-- BARRE DI PROGRESSO: PROTEINE, CARBOIDRATI, GRASSI, ACQUA -->
+    <div class="card">
+        <h4 style="margin-bottom: 10px;">📈 Progressi di Oggi</h4>
+
+        <div class="progress-item">
+            <div class="progress-head">
+                <span>🥩 Proteine</span>
+                <span class="progress-values" id="progLabel-p">0 / 0 g | 0%</span>
+            </div>
+            <div class="progress-track" id="progTrack-p" role="progressbar" aria-label="Proteine" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="progress-fill bar-p" id="progFill-p"></div>
+            </div>
+        </div>
+
+        <div class="progress-item">
+            <div class="progress-head">
+                <span>🍞 Carboidrati</span>
+                <span class="progress-values" id="progLabel-c">0 / 0 g | 0%</span>
+            </div>
+            <div class="progress-track" id="progTrack-c" role="progressbar" aria-label="Carboidrati" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="progress-fill bar-c" id="progFill-c"></div>
+            </div>
+        </div>
+
+        <div class="progress-item">
+            <div class="progress-head">
+                <span>🥑 Grassi</span>
+                <span class="progress-values" id="progLabel-g">0 / 0 g | 0%</span>
+            </div>
+            <div class="progress-track" id="progTrack-g" role="progressbar" aria-label="Grassi" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="progress-fill bar-g" id="progFill-g"></div>
+            </div>
+        </div>
+
+        <div class="progress-item">
+            <div class="progress-head">
+                <span>💧 Acqua</span>
+                <span class="progress-values" id="progLabel-w">0 / 0 ml | 0%</span>
+            </div>
+            <div class="progress-track" id="progTrack-w" role="progressbar" aria-label="Acqua" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="progress-fill bar-w" id="progFill-w"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- DIARIO ALIMENTARE -->
     <div class="card">
         <div id="editingBanner" style="display:none; background:#dbeafe; border:1px solid #bfdbfe; color:#1e40af; padding:6px 10px; border-radius:6px; font-size:0.8rem; margin-bottom:10px; justify-content:space-between; align-items:center;">
             <span>✏️ Stai modificando la giornata del <strong id="editingDateLabel"></strong></span>
-            <button onclick="cancelEditingHistory()" style="width:auto; padding:3px 8px; font-size:0.75rem; background:#3b82f6;">Annulla</button>
+            <button data-haptic="tap" onclick="cancelEditingHistory()" style="width:auto; padding:3px 8px; font-size:0.75rem; background:#3b82f6;">Annulla</button>
         </div>
 
         <h3>Diario Alimentare di Oggi</h3>
@@ -581,7 +796,7 @@
         <div class="meal-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <h4>☕ Colazione</h4>
-                <button class="btn-secondary" onclick="openRecipeSelector('Colazione')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
+                <button class="btn-secondary" data-haptic="tap" onclick="openRecipeSelector('Colazione')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
@@ -589,11 +804,11 @@
                     <div id="searchResults-Colazione" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Colazione" placeholder="g" style="flex: 1;">
-                <button onclick="addFoodToMeal('Colazione')" style="flex: 0.8;">+ Add</button>
+                <button data-haptic="tap" onclick="addFoodToMeal('Colazione')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Colazione" class="meal-items"></ul>
             <div id="subtotal-Colazione" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
-            
+
             <!-- TENDINA DETTAGLI NUTRIENTI COLAZIONE -->
             <details class="macro-details-accordion">
                 <summary>🔽 Dettaglio Nutrienti</summary>
@@ -609,7 +824,7 @@
         <div class="meal-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <h4>🥗 Pranzo</h4>
-                <button class="btn-secondary" onclick="openRecipeSelector('Pranzo')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
+                <button class="btn-secondary" data-haptic="tap" onclick="openRecipeSelector('Pranzo')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
@@ -617,11 +832,11 @@
                     <div id="searchResults-Pranzo" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Pranzo" placeholder="g" style="flex: 1;">
-                <button onclick="addFoodToMeal('Pranzo')" style="flex: 0.8;">+ Add</button>
+                <button data-haptic="tap" onclick="addFoodToMeal('Pranzo')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Pranzo" class="meal-items"></ul>
             <div id="subtotal-Pranzo" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
-            
+
             <!-- TENDINA DETTAGLI NUTRIENTI PRANZO -->
             <details class="macro-details-accordion">
                 <summary>🔽 Dettaglio Nutrienti</summary>
@@ -637,7 +852,7 @@
         <div class="meal-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <h4>🍽️ Cena</h4>
-                <button class="btn-secondary" onclick="openRecipeSelector('Cena')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
+                <button class="btn-secondary" data-haptic="tap" onclick="openRecipeSelector('Cena')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
@@ -645,11 +860,11 @@
                     <div id="searchResults-Cena" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Cena" placeholder="g" style="flex: 1;">
-                <button onclick="addFoodToMeal('Cena')" style="flex: 0.8;">+ Add</button>
+                <button data-haptic="tap" onclick="addFoodToMeal('Cena')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Cena" class="meal-items"></ul>
             <div id="subtotal-Cena" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
-            
+
             <!-- TENDINA DETTAGLI NUTRIENTI CENA -->
             <details class="macro-details-accordion">
                 <summary>🔽 Dettaglio Nutrienti</summary>
@@ -665,7 +880,7 @@
         <div class="meal-card">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                 <h4>🍎 Spuntino / Snack</h4>
-                <button class="btn-secondary" onclick="openRecipeSelector('Snack')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
+                <button class="btn-secondary" data-haptic="tap" onclick="openRecipeSelector('Snack')" style="width: auto; font-size: 0.72rem; padding: 3px 6px;">+ Pasto Salvato</button>
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
@@ -673,11 +888,11 @@
                     <div id="searchResults-Snack" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Snack" placeholder="g" style="flex: 1;">
-                <button onclick="addFoodToMeal('Snack')" style="flex: 0.8;">+ Add</button>
+                <button data-haptic="tap" onclick="addFoodToMeal('Snack')" style="flex: 0.8;">+ Add</button>
             </div>
             <ul id="list-Snack" class="meal-items"></ul>
             <div id="subtotal-Snack" class="meal-subtotal">Pasto: 0 kcal | P: 0g | G: 0g | C: 0g</div>
-            
+
             <!-- TENDINA DETTAGLI NUTRIENTI SPUNTINO -->
             <details class="macro-details-accordion">
                 <summary>🔽 Dettaglio Nutrienti</summary>
@@ -715,7 +930,7 @@
                 <option value="muscle" data-met="5.0">Esercizio muscolare</option>
             </select>
             <input type="number" id="activityDurationInput" placeholder="Minuti" style="flex: 1;">
-            <button onclick="addActivityToToday()" style="flex: 0.8;">+ Aggiungi</button>
+            <button data-haptic="tap" onclick="addActivityToToday()" style="flex: 0.8;">+ Aggiungi</button>
         </div>
 
         <ul id="todayActivitiesList" class="meal-items" style="margin-top: 6px;"></ul>
@@ -724,7 +939,7 @@
             Totale Bruciato Oggi: 0 kcal
         </div>
 
-        <button onclick="saveDay()" style="width: 100%; background-color: var(--success); padding: 10px; font-size: 0.92rem;">Salva Giornata nello Storico</button>
+        <button data-haptic="success" onclick="saveDay()" style="width: 100%; background-color: var(--success); padding: 10px; font-size: 0.92rem;">Salva Giornata nello Storico</button>
     </div>
 
 </div>
@@ -734,7 +949,7 @@
     <div class="drawer-content">
         <div class="drawer-header">
             <h3>👤 Dati Profilo & Grafico Peso</h3>
-            <button class="close-btn" onclick="toggleDrawer('profileDrawer')">✕</button>
+            <button class="close-btn" data-haptic="tap" onclick="toggleDrawer('profileDrawer')">✕</button>
         </div>
 
         <div class="form-group">
@@ -784,13 +999,49 @@
 
         <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--border);">
 
+        <!-- RIPARTIZIONE MACRO -->
+        <h4>🥧 Ripartizione Macro</h4>
+
+        <div class="form-group">
+            <label for="macroPresetSelect">Preset</label>
+            <select id="macroPresetSelect" onchange="onMacroPresetChange()"></select>
+        </div>
+
+        <div id="macroCustomBox" style="display: none;">
+            <div class="row">
+                <div class="form-group">
+                    <label for="macroInputP">Proteine (%)</label>
+                    <input type="number" id="macroInputP" min="0" max="100" step="1" inputmode="decimal" oninput="onMacroCustomInput()">
+                </div>
+                <div class="form-group">
+                    <label for="macroInputC">Carboidrati (%)</label>
+                    <input type="number" id="macroInputC" min="0" max="100" step="1" inputmode="decimal" oninput="onMacroCustomInput()">
+                </div>
+                <div class="form-group">
+                    <label for="macroInputG">Grassi (%)</label>
+                    <input type="number" id="macroInputG" min="0" max="100" step="1" inputmode="decimal" oninput="onMacroCustomInput()">
+                </div>
+            </div>
+            <button class="btn-secondary" data-haptic="tap" onclick="autoBalanceCustomMacros()" style="margin-bottom: 8px;">⚖️ Bilancia automaticamente a 100%</button>
+        </div>
+
+        <div id="macroSumStatus" class="macro-sum-status ok">✓ Somma 100%</div>
+
+        <canvas id="macroPieChart" aria-label="Grafico a torta della ripartizione macro"></canvas>
+        <div class="macro-legend" id="macroLegend"></div>
+
+        <div class="macro-grams-grid" id="macroGramsGrid"></div>
+        <div class="macro-note" id="macroNote"></div>
+
+        <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--border);">
+
         <h4>⚖️ Pesata Bisettimanale & Andamento</h4>
         <div class="row" style="align-items: flex-end;">
             <div class="form-group" style="flex: 1.2;">
                 <label for="currentWeightInput">Peso Rilevato (kg)</label>
                 <input type="number" id="currentWeightInput" placeholder="Es. 60.5" step="0.1" oninput="calculateTDEE()">
             </div>
-            <button onclick="addWeightRecord()" style="flex: 1; margin-bottom: 8px; padding: 8px;">Registra Pesata</button>
+            <button data-haptic="success" onclick="addWeightRecord()" style="flex: 1; margin-bottom: 8px; padding: 8px;">Registra Pesata</button>
         </div>
 
         <div>
@@ -798,7 +1049,7 @@
             <canvas id="weightChart"></canvas>
         </div>
 
-        <button onclick="resetCurrentProfileData()" class="btn-danger" style="margin-top: 10px; width: 100%; padding: 8px;">🗑️ Azzera Dati e Pesate di questo Profilo</button>
+        <button onclick="resetCurrentProfileData()" data-haptic="warn" class="btn-danger" style="margin-top: 10px; width: 100%; padding: 8px;">🗑️ Azzera Dati e Pesate di questo Profilo</button>
     </div>
 </div>
 
@@ -807,15 +1058,15 @@
     <div class="drawer-content">
         <div class="drawer-header">
             <h3>➕ Gestione Alimenti & Database</h3>
-            <button class="close-btn" onclick="toggleDrawer('addFoodDrawer')">✕</button>
+            <button class="close-btn" data-haptic="tap" onclick="toggleDrawer('addFoodDrawer')">✕</button>
         </div>
 
         <div style="background: var(--bg-color); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
-            <button onclick="syncDatabaseFromGithub(true)" class="btn-secondary" style="width: 100%; padding: 8px; font-size: 0.85rem;">🔄 Sincronizza Alimenti</button>
+            <button data-haptic="tap" onclick="syncDatabaseFromGithub(true)" class="btn-secondary" style="width: 100%; padding: 8px; font-size: 0.85rem;">🔄 Sincronizza Alimenti</button>
         </div>
 
         <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
-        
+
         <h4>Aggiungi Singolo Alimento (100g)</h4>
         <div class="form-group">
             <label for="newFoodName">Nome Alimento</label>
@@ -855,14 +1106,14 @@
                 <input type="number" id="newFoodSale" step="0.1" placeholder="0">
             </div>
         </div>
-        <button onclick="addNewFoodToDatabase()" style="width: 100%; margin-top: 6px; padding: 8px;">Salva Alimento</button>
+        <button data-haptic="success" onclick="addNewFoodToDatabase()" style="width: 100%; margin-top: 6px; padding: 8px;">Salva Alimento</button>
 
         <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
 
         <h4>📥 Backup & Ripristino</h4>
         <div class="row">
-            <button class="btn-secondary" onclick="exportBackup()">📥 Scarica Backup</button>
-            <button class="btn-secondary" onclick="document.getElementById('importBackupInput').click()">📤 Carica Backup</button>
+            <button class="btn-secondary" data-haptic="tap" onclick="exportBackup()">📥 Scarica Backup</button>
+            <button class="btn-secondary" data-haptic="tap" onclick="document.getElementById('importBackupInput').click()">📤 Carica Backup</button>
             <input type="file" id="importBackupInput" accept=".json" style="display:none" onchange="importBackup(event)">
         </div>
     </div>
@@ -873,7 +1124,7 @@
     <div class="drawer-content">
         <div class="drawer-header">
             <h3>🍲 I Miei Pasti Salvati</h3>
-            <button class="close-btn" onclick="toggleDrawer('recipesDrawer')">✕</button>
+            <button class="close-btn" data-haptic="tap" onclick="toggleDrawer('recipesDrawer')">✕</button>
         </div>
 
         <div style="background: var(--bg-color); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
@@ -891,10 +1142,10 @@
                     <div id="searchResults-Recipe" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Recipe" placeholder="g" style="flex: 1;">
-                <button onclick="addIngredientToRecipeDraft()" style="flex: 0.8;">+ Add</button>
+                <button data-haptic="tap" onclick="addIngredientToRecipeDraft()" style="flex: 0.8;">+ Add</button>
             </div>
 
-            <button onclick="saveNewRecipe()" style="width: 100%; margin-top: 8px; background-color: var(--success); padding: 8px;">Salva Pasto Pronto</button>
+            <button data-haptic="success" onclick="saveNewRecipe()" style="width: 100%; margin-top: 8px; background-color: var(--success); padding: 8px;">Salva Pasto Pronto</button>
         </div>
 
         <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
@@ -910,8 +1161,8 @@
         <div class="drawer-header">
             <h3>📋 Storico Giornaliero</h3>
             <div style="display: flex; gap: 8px; align-items: center;">
-                <button onclick="clearHistory()" class="btn-danger">Cancella Tutto</button>
-                <button class="close-btn" onclick="toggleDrawer('historyDrawer')">✕</button>
+                <button data-haptic="warn" onclick="clearHistory()" class="btn-danger">Cancella Tutto</button>
+                <button class="close-btn" data-haptic="tap" onclick="toggleDrawer('historyDrawer')">✕</button>
             </div>
         </div>
         <div id="historyList"></div>
@@ -942,12 +1193,36 @@
         { marca: '', nome: 'Mela', kcal: 52, c: 14, g: 0.2, p: 0.3, zuccheri: 10, saturi: 0.03, sale: 0.01, porzione_g: 150 }
     ];
 
+    /* ===== RIPARTIZIONE MACRO: PRESET E COSTANTI ===== */
+    // Percentuali sulle kcal totali. Proteine e carboidrati = 4 kcal/g, grassi = 9 kcal/g.
+    const KCAL_PER_GRAM = { p: 4, c: 4, g: 9 };
+    const MACRO_LABELS = { p: 'Proteine', c: 'Carboidrati', g: 'Grassi' };
+    const MACRO_COLORS = { p: '#7c3aed', c: '#d97706', g: '#0d9488' };
+
+    const MACRO_PRESETS = {
+        mediterranea:   { label: 'Mediterranea',   p: 15, c: 55, g: 30 },
+        bilanciata:     { label: 'Bilanciata',     p: 25, c: 45, g: 30 },
+        iperproteica:   { label: 'Iperproteica',   p: 40, c: 35, g: 25 },
+        lowcarb:        { label: 'Low Carb',       p: 30, c: 20, g: 50 },
+        personalizzata: { label: 'Personalizzata' }
+    };
+    const DEFAULT_MACRO_PRESET = 'bilanciata';
+    const DEFAULT_CUSTOM_SPLIT = { p: 30, c: 40, g: 30 };
+
+    function newMacroFields() {
+        return {
+            macroPreset: DEFAULT_MACRO_PRESET,
+            customSplit: { ...DEFAULT_CUSTOM_SPLIT }
+        };
+    }
+
     let FOOD_DATABASE = [...BASE_FOOD_DATABASE];
     let currentDayFoods = [];
     let currentDayActivities = [];
     let currentWaterMl = 0;
     let waterTargetMl = 2000;
     let recipeDraftIngredients = [];
+    let todayTotals = { p: 0, c: 0, g: 0 };
 
     let currentSex = 'M';
     let editingEntryDate = null;
@@ -957,12 +1232,55 @@
         userName: '',
         activeSex: 'M',
         profiles: {
-            F: { age: 30, height: 165, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [] },
-            M: { age: 40, height: 175, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [] }
+            F: { age: 30, height: 165, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [], ...newMacroFields() },
+            M: { age: 40, height: 175, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [], ...newMacroFields() }
         },
         recipes: [],
         entries: []
     };
+
+    /* ===== FEEDBACK TATTILE (VIBRAZIONE) CON FALLBACK ===== */
+    const HAPTIC_PATTERNS = {
+        tap: 12,
+        success: [14, 40, 22],
+        warn: [28, 45, 28],
+        error: [60, 40, 60]
+    };
+
+    function hapticSupported() {
+        return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+    }
+
+    // Fallback per dispositivi senza vibrazione (es. iPhone/Safari): breve "pressione" visiva sul pulsante
+    function visualHapticFallback(el) {
+        if (!el || !el.classList) return;
+        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+        el.classList.remove('haptic-pulse');
+        void el.offsetWidth; // forza il riavvio dell'animazione
+        el.classList.add('haptic-pulse');
+        setTimeout(() => el.classList.remove('haptic-pulse'), 200);
+    }
+
+    function haptic(type, el) {
+        const pattern = HAPTIC_PATTERNS[type] || HAPTIC_PATTERNS.tap;
+        let vibrated = false;
+        if (hapticSupported()) {
+            try {
+                vibrated = navigator.vibrate(pattern) === true;
+            } catch (err) {
+                vibrated = false;
+            }
+        }
+        if (!vibrated) visualHapticFallback(el);
+        return vibrated;
+    }
+
+    // Ascolto globale in fase di cattura: la vibrazione parte prima di eventuali alert()/confirm()
+    document.addEventListener('click', function(e) {
+        const el = e.target.closest ? e.target.closest('[data-haptic]') : null;
+        if (!el || el.disabled) return;
+        haptic(el.getAttribute('data-haptic') || 'tap', el);
+    }, true);
 
     window.onload = function() {
         const customFoods = localStorage.getItem('customFoodsDatabase');
@@ -986,6 +1304,7 @@
         document.getElementById('sexSelect').value = currentSex;
         document.getElementById('userNameInput').value = appData.userName || '';
 
+        initMacroPresetSelect();
         loadProfileUI();
         loadDraftFromStorage();
         renderHistory();
@@ -1189,6 +1508,7 @@
 
         calculateWaterTarget();
         calculateTDEE();
+        renderMacroSection();
         checkWeightReminder();
     }
 
@@ -1201,7 +1521,8 @@
                 activity: 1.55,
                 deficitPct: 10,
                 targetKcal: 0,
-                weightHistory: []
+                weightHistory: [],
+                ...newMacroFields()
             };
             saveDataToStorage();
             loadProfileUI();
@@ -1231,7 +1552,7 @@
 
         const todayStr = new Date().toLocaleDateString('it-IT');
         const existingEntry = appData.entries.find(e => e.date === todayStr && e.profileSex === currentSex);
-        
+
         if (existingEntry) {
             currentDayFoods = existingEntry.rawFoods ? [...existingEntry.rawFoods] : [];
             currentDayActivities = existingEntry.rawActivities ? [...existingEntry.rawActivities] : [];
@@ -1288,6 +1609,7 @@
     function updateWaterDisplay() {
         const el = document.getElementById('waterCurrentDisplay');
         if (el) el.textContent = `${currentWaterMl} / ${waterTargetMl} ml`;
+        updateProgressBars();
     }
 
     function calculateTDEE() {
@@ -1297,6 +1619,7 @@
         const deficitPct = parseFloat(document.getElementById('deficitSelect').value) || 0;
 
         const prof = appData.profiles[currentSex];
+        ensureMacroDefaults(prof);
         const currentWeight = getCurrentWeight();
 
         let bmr = (10 * currentWeight) + (6.25 * height) - (5 * age);
@@ -1316,6 +1639,8 @@
         document.getElementById('targetResultMain').textContent = `${targetKcal}`;
         calculateWaterTarget();
         updateActivitiesSummary();
+        updateMacroTargetsDisplay();
+        updateProgressBars();
     }
 
     function addWeightRecord() {
@@ -1353,7 +1678,7 @@
         const lastRecord = prof.weightHistory[prof.weightHistory.length - 1];
         const diffDays = Math.floor((Date.now() - lastRecord.timestamp) / (1000 * 60 * 60 * 24));
         banner.style.display = (diffDays >= 14) ? 'block' : 'none';
-        
+
         drawWeightChart();
     }
 
@@ -1420,6 +1745,296 @@
         });
     }
 
+    /* ===== RIPARTIZIONE MACRO ===== */
+    const fmtPct = v => String(Math.round(v * 10) / 10);
+
+    function isValidSplit(s) {
+        if (!s) return false;
+        const vals = [s.p, s.c, s.g];
+        if (!vals.every(v => typeof v === 'number' && isFinite(v) && v >= 0 && v <= 100)) return false;
+        return Math.abs((s.p + s.c + s.g) - 100) < 0.01;
+    }
+
+    // Garantisce che profili salvati con versioni precedenti abbiano i campi macro
+    function ensureMacroDefaults(prof) {
+        if (!prof.macroPreset || !MACRO_PRESETS[prof.macroPreset]) {
+            prof.macroPreset = DEFAULT_MACRO_PRESET;
+        }
+        if (!isValidSplit(prof.customSplit)) {
+            prof.customSplit = { ...DEFAULT_CUSTOM_SPLIT };
+        }
+    }
+
+    function getMacroSplit(prof) {
+        const key = MACRO_PRESETS[prof.macroPreset] ? prof.macroPreset : DEFAULT_MACRO_PRESET;
+        if (key === 'personalizzata') {
+            return isValidSplit(prof.customSplit) ? prof.customSplit : DEFAULT_CUSTOM_SPLIT;
+        }
+        const pr = MACRO_PRESETS[key];
+        return { p: pr.p, c: pr.c, g: pr.g };
+    }
+
+    // Grammi target teorici in base al target calorico (già comprensivo del deficit scelto)
+    function getMacroTargets(prof) {
+        const split = getMacroSplit(prof);
+        const kcal = prof.targetKcal || 1850;
+        const pKcal = kcal * split.p / 100;
+        const cKcal = kcal * split.c / 100;
+        const gKcal = kcal * split.g / 100;
+        return {
+            kcal: kcal,
+            split: split,
+            pKcal: pKcal, cKcal: cKcal, gKcal: gKcal,
+            pG: pKcal / KCAL_PER_GRAM.p,
+            cG: cKcal / KCAL_PER_GRAM.c,
+            gG: gKcal / KCAL_PER_GRAM.g
+        };
+    }
+
+    function initMacroPresetSelect() {
+        const select = document.getElementById('macroPresetSelect');
+        if (!select) return;
+        select.innerHTML = Object.keys(MACRO_PRESETS).map(key => {
+            const pr = MACRO_PRESETS[key];
+            const text = key === 'personalizzata'
+                ? pr.label
+                : `${pr.label} (P ${pr.p}% / C ${pr.c}% / G ${pr.g}%)`;
+            return `<option value="${key}">${text}</option>`;
+        }).join('');
+    }
+
+    function renderMacroSection() {
+        const prof = appData.profiles[currentSex];
+        ensureMacroDefaults(prof);
+
+        document.getElementById('macroPresetSelect').value = prof.macroPreset;
+        const isCustom = prof.macroPreset === 'personalizzata';
+        document.getElementById('macroCustomBox').style.display = isCustom ? 'block' : 'none';
+
+        if (isCustom) {
+            document.getElementById('macroInputP').value = prof.customSplit.p;
+            document.getElementById('macroInputC').value = prof.customSplit.c;
+            document.getElementById('macroInputG').value = prof.customSplit.g;
+        }
+
+        setMacroSumStatus(100, true);
+        updateMacroTargetsDisplay();
+    }
+
+    function onMacroPresetChange() {
+        const prof = appData.profiles[currentSex];
+        prof.macroPreset = document.getElementById('macroPresetSelect').value;
+        ensureMacroDefaults(prof);
+        saveDataToStorage();
+        renderMacroSection();
+        updateProgressBars();
+    }
+
+    function readCustomMacroInputs() {
+        return {
+            p: parseFloat(document.getElementById('macroInputP').value) || 0,
+            c: parseFloat(document.getElementById('macroInputC').value) || 0,
+            g: parseFloat(document.getElementById('macroInputG').value) || 0
+        };
+    }
+
+    function setMacroSumStatus(sum, valid) {
+        const box = document.getElementById('macroSumStatus');
+        const canvas = document.getElementById('macroPieChart');
+        if (!box) return;
+
+        if (valid) {
+            box.className = 'macro-sum-status ok';
+            box.textContent = '✓ Somma 100%';
+        } else {
+            const rounded = Math.round(sum * 10) / 10;
+            const diff = Math.round((100 - sum) * 10) / 10;
+            const detail = diff > 0 ? `mancano ${fmtPct(diff)}%` : `${fmtPct(Math.abs(diff))}% in eccesso`;
+            box.className = 'macro-sum-status bad';
+            box.textContent = `⚠️ Somma ${fmtPct(rounded)}%: ${detail}. Serve 100% per applicare le modifiche.`;
+        }
+        if (canvas) canvas.classList.toggle('stale', !valid);
+    }
+
+    // Validazione automatica: la ripartizione viene applicata solo quando la somma è esattamente 100%
+    function onMacroCustomInput() {
+        const prof = appData.profiles[currentSex];
+        const values = readCustomMacroInputs();
+        const valid = isValidSplit(values);
+
+        setMacroSumStatus(values.p + values.c + values.g, valid);
+
+        if (valid) {
+            prof.customSplit = { p: values.p, c: values.c, g: values.g };
+            saveDataToStorage();
+            updateMacroTargetsDisplay();
+            updateProgressBars();
+        }
+    }
+
+    // Riporta a 100% i valori inseriti mantenendo le proporzioni
+    function autoBalanceCustomMacros() {
+        const raw = readCustomMacroInputs();
+        const keys = ['p', 'c', 'g'];
+        const clean = {};
+        keys.forEach(k => { clean[k] = Math.max(0, Math.min(100, raw[k])); });
+        const total = clean.p + clean.c + clean.g;
+
+        let result;
+        if (total <= 0) {
+            result = { ...DEFAULT_CUSTOM_SPLIT };
+        } else {
+            result = {};
+            keys.forEach(k => { result[k] = Math.round(clean[k] * 100 / total); });
+            const diff = 100 - (result.p + result.c + result.g);
+            if (diff !== 0) {
+                const largest = keys.reduce((a, b) => result[a] >= result[b] ? a : b);
+                result[largest] += diff;
+            }
+        }
+
+        document.getElementById('macroInputP').value = result.p;
+        document.getElementById('macroInputC').value = result.c;
+        document.getElementById('macroInputG').value = result.g;
+        onMacroCustomInput();
+    }
+
+    function updateMacroTargetsDisplay() {
+        const prof = appData.profiles[currentSex];
+        if (!prof) return;
+        const t = getMacroTargets(prof);
+
+        const items = [
+            { key: 'p', pct: t.split.p, grams: t.pG, kcal: t.pKcal },
+            { key: 'c', pct: t.split.c, grams: t.cG, kcal: t.cKcal },
+            { key: 'g', pct: t.split.g, grams: t.gG, kcal: t.gKcal }
+        ];
+
+        const legend = document.getElementById('macroLegend');
+        if (legend) {
+            legend.innerHTML = items.map(i =>
+                `<span class="legend-item"><i style="background:${MACRO_COLORS[i.key]}"></i>${MACRO_LABELS[i.key]} ${fmtPct(i.pct)}%</span>`
+            ).join('');
+        }
+
+        const grid = document.getElementById('macroGramsGrid');
+        if (grid) {
+            grid.innerHTML = items.map(i => `
+                <div class="macro-gram-box" style="border-top: 3px solid ${MACRO_COLORS[i.key]};">
+                    <div class="macro-gram-label">${MACRO_LABELS[i.key]}</div>
+                    <div class="macro-gram-value">${Math.round(i.grams)} g</div>
+                    <div class="macro-gram-sub">${Math.round(i.kcal)} kcal</div>
+                </div>
+            `).join('');
+        }
+
+        const note = document.getElementById('macroNote');
+        if (note) {
+            note.textContent = `Grammi teorici calcolati sul target di ${t.kcal} kcal (proteine e carboidrati 4 kcal/g, grassi 9 kcal/g).`;
+        }
+
+        drawMacroPie();
+    }
+
+    // Grafico a torta su Canvas HTML5, senza librerie esterne
+    function drawMacroPie() {
+        const canvas = document.getElementById('macroPieChart');
+        if (!canvas) return;
+        const prof = appData.profiles[currentSex];
+        const split = getMacroSplit(prof);
+
+        const size = 180;
+        const dpr = window.devicePixelRatio || 1;
+        if (canvas.width !== Math.round(size * dpr)) {
+            canvas.width = Math.round(size * dpr);
+            canvas.height = Math.round(size * dpr);
+        }
+
+        const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, size, size);
+
+        const slices = [
+            { key: 'p', value: split.p },
+            { key: 'c', value: split.c },
+            { key: 'g', value: split.g }
+        ];
+        const total = slices.reduce((acc, s) => acc + s.value, 0);
+        if (total <= 0) return;
+
+        const cx = size / 2;
+        const cy = size / 2;
+        const radius = size / 2 - 6;
+        let startAngle = -Math.PI / 2;
+
+        slices.forEach(s => {
+            if (s.value <= 0) return;
+            const angle = (s.value / total) * Math.PI * 2;
+            const endAngle = startAngle + angle;
+
+            ctx.beginPath();
+            if (angle >= Math.PI * 2 - 0.0001) {
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+            } else {
+                ctx.moveTo(cx, cy);
+                ctx.arc(cx, cy, radius, startAngle, endAngle);
+                ctx.closePath();
+            }
+            ctx.fillStyle = MACRO_COLORS[s.key];
+            ctx.fill();
+
+            if (angle < Math.PI * 2 - 0.0001) {
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Etichetta percentuale al centro della fetta (solo se abbastanza grande)
+            if (s.value / total >= 0.08) {
+                const mid = startAngle + angle / 2;
+                const lx = angle >= Math.PI * 2 - 0.0001 ? cx : cx + Math.cos(mid) * radius * 0.62;
+                const ly = angle >= Math.PI * 2 - 0.0001 ? cy : cy + Math.sin(mid) * radius * 0.62;
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 13px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(`${fmtPct(s.value)}%`, lx, ly);
+            }
+
+            startAngle = endAngle;
+        });
+    }
+
+    /* ===== BARRE DI PROGRESSO ===== */
+    // kind 'goal': obiettivo da raggiungere (verde a 100%). kind 'limit': tetto da non superare (rosso oltre 100%).
+    function setProgress(key, value, target, kind, unit) {
+        const fill = document.getElementById(`progFill-${key}`);
+        const label = document.getElementById(`progLabel-${key}`);
+        const track = document.getElementById(`progTrack-${key}`);
+        if (!fill || !label || !track) return;
+
+        const pct = target > 0 ? (value / target) * 100 : 0;
+        const shown = Math.round(pct);
+
+        fill.style.width = `${Math.max(0, Math.min(100, pct))}%`;
+        fill.classList.toggle('done', kind === 'goal' && pct >= 100);
+        fill.classList.toggle('over', kind === 'limit' && pct > 100);
+
+        label.textContent = `${Math.round(value)} / ${Math.round(target)} ${unit} | ${shown}%`;
+        track.setAttribute('aria-valuenow', String(Math.max(0, Math.min(100, shown))));
+    }
+
+    function updateProgressBars() {
+        const prof = appData.profiles[currentSex];
+        if (!prof) return;
+        const t = getMacroTargets(prof);
+
+        setProgress('p', todayTotals.p, t.pG, 'goal', 'g');
+        setProgress('c', todayTotals.c, t.cG, 'limit', 'g');
+        setProgress('g', todayTotals.g, t.gG, 'limit', 'g');
+        setProgress('w', currentWaterMl, waterTargetMl, 'goal', 'ml');
+    }
+
     function addActivityToToday() {
         const select = document.getElementById('dailyActivitySelect');
         const text = select.options[select.selectedIndex].text;
@@ -1462,7 +2077,7 @@
             const li = document.createElement('li');
             li.innerHTML = `
                 <span>🏃‍♂️ ${a.name} (${a.duration} min) - <strong>~${a.kcal} kcal</strong></span>
-                <button type="button" class="btn-danger-square" onclick="removeActivity(${a.id})" title="Elimina">✕</button>
+                <button type="button" class="btn-danger-square" data-haptic="warn" onclick="removeActivity(${a.id})" title="Elimina">✕</button>
             `;
             list.appendChild(li);
         });
@@ -1474,7 +2089,7 @@
         const inputEl = document.getElementById(`foodInput-${meal}`);
         const query = inputEl.value.toLowerCase().trim();
         const resultsDiv = document.getElementById(`searchResults-${meal}`);
-        
+
         if (query.length < 1) {
             resultsDiv.style.display = 'none';
             return;
@@ -1525,7 +2140,7 @@
             const defaultPortion = parseFloat(match.porzione_g) || 100;
             if (!grams || isNaN(grams)) grams = defaultPortion;
             const factor = grams / 100;
-            
+
             const rawKcal = parseFloat(match.kcal) || 0;
             const rawP = parseFloat(match.p) || 0;
             const rawG = parseFloat(match.g) || 0;
@@ -1576,7 +2191,7 @@
 
     function updateTodaySummary() {
         const meals = ['Colazione', 'Pranzo', 'Cena', 'Snack'];
-        
+
         meals.forEach(meal => {
             document.getElementById(`list-${meal}`).innerHTML = '';
         });
@@ -1611,12 +2226,12 @@
                         <span>${item.nome} (${item.grams}g) - <strong>${item.kcal} kcal</strong></span>
                         <span class="food-macro-details">P: ${item.p}g | G: ${item.g}g | C: ${item.c}g</span>
                     </div>
-                    <button type="button" class="btn-danger-square" onclick="removeFood(${item.id})" title="Elimina">✕</button>
+                    <button type="button" class="btn-danger-square" data-haptic="warn" onclick="removeFood(${item.id})" title="Elimina">✕</button>
                 `;
                 list.appendChild(li);
             });
 
-            document.getElementById(`subtotal-${meal}`).textContent = 
+            document.getElementById(`subtotal-${meal}`).textContent =
                 `Pasto: ${mKcal} kcal | P: ${mP.toFixed(1)}g | G: ${mG.toFixed(1)}g | C: ${mC.toFixed(1)}g`;
 
             const extDiv = document.getElementById(`ext-${meal}`);
@@ -1630,7 +2245,7 @@
         });
 
         document.getElementById('consumedKcalMain').textContent = totKcal;
-        document.getElementById('totals').textContent = 
+        document.getElementById('totals').textContent =
             `Totale Giornata: ${totKcal} kcal | P: ${totP.toFixed(1)}g | G: ${totG.toFixed(1)}g | C: ${totC.toFixed(1)}g`;
 
         const extTot = document.getElementById('ext-Totale');
@@ -1641,6 +2256,10 @@
                 <div>🧂 Sale: <strong>${totSale.toFixed(2)}g</strong></div>
             `;
         }
+
+        // Aggiorna le barre di progresso in tempo reale
+        todayTotals = { p: totP, c: totC, g: totG };
+        updateProgressBars();
     }
 
     function generateFeedback(totalKcal, targetKcal, waterMl) {
@@ -1672,9 +2291,9 @@
 
         let totKcal = 0, totP = 0, totG = 0, totC = 0, totZ = 0, totSat = 0, totSale = 0;
         currentDayFoods.forEach(i => {
-            totKcal += (i.kcal || 0); 
-            totP += (i.p || 0); 
-            totG += (i.g || 0); 
+            totKcal += (i.kcal || 0);
+            totP += (i.p || 0);
+            totG += (i.g || 0);
             totC += (i.c || 0);
             totZ += (i.zuccheri || 0);
             totSat += (i.saturi || 0);
@@ -1686,7 +2305,7 @@
             return items ? `<strong>${meal}:</strong> ${items}` : null;
         }).filter(Boolean).join(' | ');
 
-        let actSummary = currentDayActivities.length > 0 ? 
+        let actSummary = currentDayActivities.length > 0 ?
             currentDayActivities.map(a => `${a.name} (${a.duration} min)`).join(', ') + ` [~${totBurned} kcal]` : 'Nessuna';
 
         const comment = generateFeedback(totKcal, prof.targetKcal, currentWaterMl);
@@ -1749,8 +2368,8 @@
                         <span class="history-tag ${item.hasActivity ? 'tag-good' : 'tag-neutral'}">
                             ${item.hasActivity ? 'Attività' : 'Riposo'}
                         </span>
-                        <button class="btn-edit" onclick="editHistoryEntry(${idx})">✏️ Modifica</button>
-                        <button class="btn-danger-square" onclick="deleteHistoryEntry(${idx})" title="Elimina">✕</button>
+                        <button class="btn-edit" data-haptic="tap" onclick="editHistoryEntry(${idx})">✏️ Modifica</button>
+                        <button class="btn-danger-square" data-haptic="warn" onclick="deleteHistoryEntry(${idx})" title="Elimina">✕</button>
                     </div>
                 </div>
 
@@ -1852,7 +2471,10 @@
         drawer.style.display = isOpen ? 'none' : 'flex';
 
         if (id === 'profileDrawer' && !isOpen) {
-            setTimeout(drawWeightChart, 100);
+            setTimeout(() => {
+                drawWeightChart();
+                drawMacroPie();
+            }, 100);
         }
     }
 
@@ -1907,7 +2529,7 @@
         container.innerHTML = recipeDraftIngredients.map((ing, idx) => `
             <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding:2px 0; align-items:center;">
                 <span>${ing.nome} (${ing.grams}g)</span>
-                <button type="button" class="btn-danger-square" onclick="recipeDraftIngredients.splice(${idx},1); renderRecipeDraft();">✕</button>
+                <button type="button" class="btn-danger-square" data-haptic="warn" onclick="recipeDraftIngredients.splice(${idx},1); renderRecipeDraft();">✕</button>
             </div>
         `).join('');
     }
@@ -1944,7 +2566,7 @@
             <div class="meal-card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <strong>${recipe.name}</strong>
-                    <button class="btn-danger-square" onclick="deleteRecipe(${recipe.id})" title="Elimina">✕</button>
+                    <button class="btn-danger-square" data-haptic="warn" onclick="deleteRecipe(${recipe.id})" title="Elimina">✕</button>
                 </div>
                 <div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">
                     ${recipe.ingredients.map(i => `${i.nome} (${i.grams}g)`).join(', ')}
@@ -2076,7 +2698,7 @@
         localStorage.setItem('customFoodsDatabase', JSON.stringify(customFoods));
 
         alert(`✅ Alimento salvato! Se hai modificato il file centrale, premi "Sincronizza Alimenti" per aggiornare la lista.`);
-        
+
         document.getElementById('newFoodName').value = '';
         document.getElementById('newFoodKcal').value = '';
         document.getElementById('newFoodP').value = '';
