@@ -697,10 +697,121 @@
             transform: translateX(-50%) translateY(0);
         }
 
+        /* ===== FINESTRE DI DIALOGO DELL'APP ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            box-sizing: border-box;
+            z-index: 4000;
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            width: 100%;
+            max-width: 360px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            overflow: hidden;
+            animation: popIn 0.2s ease-out;
+        }
+
+        .modal-title {
+            background: var(--header-bg);
+            color: var(--header-text);
+            font-weight: 800;
+            font-size: 1rem;
+            padding: 10px 14px;
+        }
+
+        .modal-body {
+            padding: 14px;
+            font-size: 0.9rem;
+            line-height: 1.45;
+            white-space: pre-line;
+            color: var(--text);
+            max-height: 50vh;
+            overflow-y: auto;
+            word-break: break-word;
+        }
+
+        .modal-list {
+            padding: 0 14px 6px;
+            max-height: 45vh;
+            overflow-y: auto;
+            display: none;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .modal-choice {
+            width: 100%;
+            text-align: left;
+            background: var(--bg-color);
+            color: var(--text);
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            word-break: break-word;
+        }
+
+        .modal-choice:hover {
+            background: var(--bg-color);
+            border-color: var(--primary);
+        }
+
+        .modal-choice small {
+            display: block;
+            color: var(--text-muted);
+            font-weight: 500;
+            font-size: 0.74rem;
+            margin-top: 2px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            padding: 12px 14px 14px;
+        }
+
+        .modal-actions button {
+            flex: 1;
+            padding: 10px;
+            font-size: 0.9rem;
+        }
+
+        .modal-actions .btn-cancel {
+            background: var(--bg-color);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .modal-actions .btn-danger-solid {
+            background: var(--danger);
+        }
+
+        .modal-actions .btn-danger-solid:hover {
+            background: #dc2626;
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .progress-fill { transition: none; }
             .haptic-pulse { animation: none; }
             .toast { transition: none; }
+            .modal-box { animation: none; }
         }
     </style>
 </head>
@@ -980,8 +1091,18 @@
 
 </div>
 
-<!-- MESSAGGIO BREVE (usato dagli shortcut) -->
+<!-- MESSAGGIO BREVE (successi e shortcut) -->
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<!-- FINESTRA DI DIALOGO DELL'APP (avvisi, conferme, scelta del pasto salvato) -->
+<div id="appModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="appModalTitle">
+    <div class="modal-box">
+        <div class="modal-title" id="appModalTitle">NutriTracker</div>
+        <div class="modal-body" id="appModalBody"></div>
+        <div class="modal-list" id="appModalList"></div>
+        <div class="modal-actions" id="appModalActions"></div>
+    </div>
+</div>
 
 <!-- DRAWER 1: PROFILO & NOME & PESO -->
 <div id="profileDrawer" class="drawer-overlay" onclick="closeDrawerOnBg(event, 'profileDrawer')">
@@ -1386,7 +1507,7 @@
         return vibrated;
     }
 
-    // Ascolto globale in fase di cattura: la vibrazione parte prima di eventuali alert()/confirm()
+    // Ascolto globale in fase di cattura: la vibrazione parte prima delle azioni collegate al pulsante
     document.addEventListener('click', function(e) {
         const el = e.target.closest ? e.target.closest('[data-haptic]') : null;
         if (!el || el.disabled) return;
@@ -1504,6 +1625,7 @@
     }
 
     window.onload = function() {
+        initAppModal();
         loadFoodStorage();
 
         const savedData = localStorage.getItem('nutritionTrackerDataWeb');
@@ -1562,16 +1684,144 @@
         });
     };
 
+    /* ===== FINESTRE DI DIALOGO DELL'APP (al posto di alert, confirm e prompt del browser) ===== */
+    let modalQueue = [];
+    let modalActive = null;
+
+    function openAppModal(config) {
+        return new Promise(function(resolve) {
+            modalQueue.push({ config: config, resolve: resolve });
+            if (!modalActive) showNextModal();
+        });
+    }
+
+    function makeModalButton(text, className, haptic, onClick) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        if (className) btn.className = className;
+        btn.setAttribute('data-haptic', haptic);
+        btn.textContent = text;
+        btn.addEventListener('click', onClick);
+        return btn;
+    }
+
+    function showNextModal() {
+        const next = modalQueue.shift();
+        if (!next) return;
+        modalActive = next;
+        const cfg = next.config;
+
+        const overlay = document.getElementById('appModal');
+        const list = document.getElementById('appModalList');
+        const actions = document.getElementById('appModalActions');
+
+        document.getElementById('appModalTitle').textContent = cfg.title || 'NutriTracker';
+        document.getElementById('appModalBody').textContent = cfg.message || '';
+        list.innerHTML = '';
+        actions.innerHTML = '';
+
+        if (cfg.choices && cfg.choices.length > 0) {
+            list.style.display = 'flex';
+            cfg.choices.forEach(function(choice, i) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'modal-choice';
+                btn.setAttribute('data-haptic', 'tap');
+                const label = document.createElement('span');
+                label.textContent = choice.label;
+                btn.appendChild(label);
+                if (choice.sub) {
+                    const sub = document.createElement('small');
+                    sub.textContent = choice.sub;
+                    btn.appendChild(sub);
+                }
+                btn.addEventListener('click', function() { closeAppModal(i); });
+                list.appendChild(btn);
+            });
+        } else {
+            list.style.display = 'none';
+        }
+
+        if (cfg.cancelText) {
+            actions.appendChild(makeModalButton(cfg.cancelText, 'btn-cancel', 'tap', function() {
+                closeAppModal(cfg.cancelValue);
+            }));
+        }
+        if (cfg.confirmText) {
+            actions.appendChild(makeModalButton(cfg.confirmText, cfg.danger ? 'btn-danger-solid' : '', cfg.danger ? 'warn' : 'tap', function() {
+                closeAppModal(cfg.confirmValue);
+            }));
+        }
+
+        overlay.classList.add('open');
+        const focusEl = cfg.confirmText ? actions.lastElementChild : null;
+        if (focusEl) focusEl.focus();
+    }
+
+    function closeAppModal(value) {
+        if (!modalActive) return;
+        const active = modalActive;
+        modalActive = null;
+        document.getElementById('appModal').classList.remove('open');
+        active.resolve(value);
+        if (modalQueue.length > 0) setTimeout(showNextModal, 0);
+    }
+
+    function initAppModal() {
+        const overlay = document.getElementById('appModal');
+        // Tocco fuori dalla finestra o tasto Esc = chiusura come "Annulla" (negli avvisi = OK)
+        overlay.addEventListener('click', function(e) {
+            if (e.target === overlay && modalActive) closeAppModal(modalActive.config.dismissValue);
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && modalActive) closeAppModal(modalActive.config.dismissValue);
+        });
+    }
+
+    // Avviso con il solo pulsante OK
+    function appAlert(message, options) {
+        const o = options || {};
+        return openAppModal({ title: o.title, message: message, confirmText: o.confirmText || 'OK', confirmValue: true, dismissValue: true });
+    }
+
+    // Conferma con due pulsanti: risolve true (conferma) o false (annulla)
+    function appConfirm(message, options) {
+        const o = options || {};
+        return openAppModal({
+            title: o.title,
+            message: message,
+            confirmText: o.confirmText || 'Conferma',
+            confirmValue: true,
+            cancelText: o.cancelText || 'Annulla',
+            cancelValue: false,
+            dismissValue: false,
+            danger: !!o.danger
+        });
+    }
+
+    // Lista da toccare: risolve con la posizione scelta oppure null se si annulla
+    function appChoose(message, choices, options) {
+        const o = options || {};
+        return openAppModal({
+            title: o.title,
+            message: message,
+            choices: choices,
+            cancelText: o.cancelText || 'Annulla',
+            cancelValue: null,
+            dismissValue: null
+        });
+    }
+
     /* ===== MESSAGGIO BREVE ===== */
     let toastTimer = null;
 
-    function showToast(text) {
+    function showToast(text, ms) {
         const el = document.getElementById('toast');
         if (!el) return;
         el.textContent = text;
         el.classList.add('show');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+        toastTimer = setTimeout(() => el.classList.remove('show'), ms || 2600);
     }
 
     /* ===== SHORTCUT DELLA SCHERMATA HOME (parametro ?action=) ===== */
@@ -1666,12 +1916,12 @@
             .then(buffer => {
                 parseExcelArrayBuffer(buffer);
                 if (showSuccessAlert) {
-                    alert("✅ Database sincronizzato ed aggiornato con successo!");
+                    showToast("✅ Database sincronizzato ed aggiornato con successo!");
                 }
             })
             .catch(() => {
                 if (showSuccessAlert) {
-                    alert("⚠️ Errore durante l'aggiornamento.");
+                    appAlert("⚠️ Errore durante l'aggiornamento.");
                 }
             });
     }
@@ -1864,20 +2114,21 @@
         }
     }
 
-    function onBirthDateChange() {
+    async function onBirthDateChange() {
         const input = document.getElementById('birthDate');
         const prof = appData.profiles[currentSex];
         const value = input.value;
 
         if (!isValidBirthDate(value)) {
-            if (value) alert("Data di nascita non valida.");
             input.value = prof.birthDate || '';
+            if (value) await appAlert("Data di nascita non valida.");
             return;
         }
 
         // Profilo già confermato ma senza data: inserimento una tantum, con conferma
         if (appData.lockedSex && !prof.birthDate) {
-            if (!confirm(`Confermi la data di nascita ${formatBirthDateIt(value)}?\n\nNon potrà più essere modificata.`)) {
+            const okBirth = await appConfirm(`Confermi la data di nascita ${formatBirthDateIt(value)}?\n\nNon potrà più essere modificata.`);
+            if (!okBirth) {
                 input.value = '';
                 return;
             }
@@ -1888,30 +2139,29 @@
         applyProfileLockUI();
     }
 
-    function startProfileEdit() {
+    async function startProfileEdit() {
         if (!appData.lockedSex || appData.profileEditing) return;
 
-        if (!confirm('Vuoi modificare attività generale, deficit e ripartizione macro?\n\nSesso, altezza e data di nascita restano bloccati. Al termine premi "Conferma Profilo".')) {
-            return;
-        }
+        const okEdit = await appConfirm('Vuoi modificare attività generale, deficit e ripartizione macro?\n\nSesso, altezza e data di nascita restano bloccati. Al termine premi "Conferma Profilo".', { confirmText: 'Modifica' });
+        if (!okEdit) return;
 
         appData.profileEditing = true;
         saveDataToStorage();
         applyProfileLockUI();
     }
 
-    function confirmProfile() {
+    async function confirmProfile() {
         const firstTime = !appData.lockedSex;
         if (!firstTime && !appData.profileEditing) return;
 
         const prof = appData.profiles[currentSex];
 
         if (prof.macroPreset === 'personalizzata' && !isValidSplit(readCustomMacroInputs())) {
-            alert("⚠️ La somma delle percentuali macro deve essere 100% prima di confermare il profilo.");
+            appAlert("⚠️ La somma delle percentuali macro deve essere 100% prima di confermare il profilo.");
             return;
         }
         if (firstTime && !isValidBirthDate(prof.birthDate)) {
-            alert("⚠️ Inserisci la data di nascita prima di confermare il profilo.");
+            appAlert("⚠️ Inserisci la data di nascita prima di confermare il profilo.");
             return;
         }
 
@@ -1919,7 +2169,8 @@
         const message = firstTime
             ? `Dopo la conferma NON potrai più modificare sesso, altezza e data di nascita. Attività generale, deficit e ripartizione macro potrai cambiarli con "Modifica Profilo". Nome e peso restano sempre modificabili.\n\nConfermi il profilo ${profileLabel}?`
             : 'Confermi le modifiche a attività generale, deficit e ripartizione macro?';
-        if (!confirm(message)) return;
+        const okProfile = await appConfirm(message, { confirmText: 'Conferma' });
+        if (!okProfile) return;
 
         calculateTDEE(); // fissa i valori correnti
         appData.lockedSex = currentSex;
@@ -1928,7 +2179,7 @@
         saveDataToStorage();
         applyProfileLockUI();
         renderHistory();
-        alert(firstTime ? "🔒 Profilo confermato." : "🔒 Modifiche confermate.");
+        showToast(firstTime ? "🔒 Profilo confermato." : "🔒 Modifiche confermate.");
     }
 
     /* ===== BOZZA DEL GIORNO, SALVATAGGIO AUTOMATICO E CAMBIO GIORNO ===== */
@@ -2148,7 +2399,7 @@
         const inputField = document.getElementById('currentWeightInput');
         const val = parseFloat(inputField.value);
         if (!val || isNaN(val)) {
-            alert("Inserisci un peso valido.");
+            appAlert("Inserisci un peso valido.");
             return;
         }
 
@@ -2163,7 +2414,7 @@
         calculateTDEE();
         checkWeightReminder();
         drawWeightChart();
-        alert(`✅ Pesata di ${val} kg registrata!`);
+        showToast(`✅ Pesata di ${val} kg registrata!`);
     }
 
     function checkWeightReminder() {
@@ -2569,7 +2820,7 @@
         const duration = parseFloat(document.getElementById('activityDurationInput').value) || 0;
 
         if (duration <= 0) {
-            alert("Inserisci i minuti di durata dell'attività.");
+            appAlert("Inserisci i minuti di durata dell'attività.");
             return;
         }
 
@@ -2659,7 +2910,7 @@
     }
 
     /* INSERIMENTO ALIMENTO NEL PASTO CON ACQUISIZIONE CORRETTA DEGLI ZUCCHERI */
-    function addFoodToMeal(meal) {
+    async function addFoodToMeal(meal) {
         const inputName = document.getElementById(`foodInput-${meal}`).value.trim();
         let grams = parseFloat(document.getElementById(`foodGrams-${meal}`).value);
 
@@ -2698,7 +2949,7 @@
             });
         } else {
             // Alimento non presente nel database: avviso prima di inserirlo con valori a zero
-            const proceed = confirm(`⚠️ "${inputName}" non è presente nel database.\n\nOK = aggiungilo comunque (0 kcal e 0 macro)\nAnnulla = torna indietro`);
+            const proceed = await appConfirm(`⚠️ "${inputName}" non è presente nel database.\n\nVuoi aggiungerlo comunque con 0 kcal e 0 macro?`, { confirmText: 'Aggiungi comunque' });
             if (!proceed) return;
 
             if (!grams || isNaN(grams)) grams = 100;
@@ -2919,12 +3170,13 @@
         }).join('');
     }
 
-    function editHistoryEntry(idx) {
+    async function editHistoryEntry(idx) {
         const item = appData.entries[idx];
         if (!item) return;
         if (appData.lockedSex && item.profileSex !== appData.lockedSex) return;
 
-        if (confirm(`Vuoi aprire la giornata del ${item.date} nel diario principale per modificarla?\n\nLe modifiche vengono salvate automaticamente.`)) {
+        const okOpen = await appConfirm(`Vuoi aprire la giornata del ${item.date} nel diario principale per modificarla?\n\nLe modifiche vengono salvate automaticamente.`, { confirmText: 'Apri' });
+        if (okOpen) {
             currentSex = item.profileSex;
             appData.activeSex = currentSex;
             document.getElementById('sexSelect').value = currentSex;
@@ -2951,21 +3203,25 @@
         loadDraftFromStorage();
     }
 
-    function deleteHistoryEntry(idx) {
+    async function deleteHistoryEntry(idx) {
         const item = appData.entries[idx];
         if (!item) return;
 
-        if (confirm(`Sei sicuro di voler eliminare definitivamente la registrazione del ${item.date}?`)) {
+        const okDelete = await appConfirm(`Sei sicuro di voler eliminare definitivamente la registrazione del ${item.date}?`, { confirmText: 'Elimina', danger: true });
+        if (okDelete) {
+            const pos = appData.entries.indexOf(item);
+            if (pos === -1) return;
             const wasEditing = editingEntryDate === item.date && item.profileSex === currentSex;
-            appData.entries.splice(idx, 1);
+            appData.entries.splice(pos, 1);
             saveDataToStorage();
             renderHistory();
             if (wasEditing) loadDraftFromStorage();
         }
     }
 
-    function clearHistory() {
-        if (confirm("Sei sicuro di voler cancellare lo storico di tutte le giornate?")) {
+    async function clearHistory() {
+        const okClear = await appConfirm("Sei sicuro di voler cancellare lo storico di tutte le giornate?", { confirmText: 'Cancella tutto', danger: true });
+        if (okClear) {
             appData.entries = [];
             saveDataToStorage();
             renderHistory();
@@ -3040,7 +3296,7 @@
     function saveNewRecipe() {
         const name = document.getElementById('recipeNameInput').value.trim();
         if (!name || recipeDraftIngredients.length === 0) {
-            alert("Inserisci un nome e almeno un ingrediente.");
+            appAlert("Inserisci un nome e almeno un ingrediente.");
             return;
         }
 
@@ -3055,7 +3311,7 @@
         document.getElementById('recipeNameInput').value = '';
         renderRecipeDraft();
         renderSavedRecipes();
-        alert(`✅ Pasto "${name}" salvato!`);
+        showToast(`✅ Pasto "${name}" salvato!`);
     }
 
     function renderSavedRecipes() {
@@ -3084,29 +3340,28 @@
         renderSavedRecipes();
     }
 
-    function openRecipeSelector(mealTarget) {
+    async function openRecipeSelector(mealTarget) {
         if (appData.recipes.length === 0) {
-            alert("Non hai ancora salvato nessun pasto pronto. Puoi crearne uno dal menu '🍲 Pasti Salvati'.");
+            appAlert("Non hai ancora salvato nessun pasto pronto. Puoi crearne uno dal menu '🍲 Pasti Salvati'.");
             return;
         }
 
-        let msg = "Seleziona il numero del pasto pronto da inserire:\n\n";
-        appData.recipes.forEach((r, idx) => {
-            msg += `${idx + 1}. ${r.name}\n`;
-        });
+        // Lista da toccare al posto della richiesta del numero
+        const choices = appData.recipes.map(r => ({
+            label: r.name,
+            sub: `${r.ingredients.length} ${r.ingredients.length === 1 ? 'ingrediente' : 'ingredienti'}`
+        }));
+        const idx = await appChoose('Scegli il pasto salvato da inserire:', choices);
 
-        const choice = prompt(msg);
-        const idx = parseInt(choice) - 1;
-
-        if (!isNaN(idx) && appData.recipes[idx]) {
+        if (idx !== null && appData.recipes[idx]) {
             const recipe = appData.recipes[idx];
 
             // Avviso se alcuni ingredienti non sono più presenti nel database
             const resolved = recipe.ingredients.map(ing => ({ ing: ing, match: findFoodMatch(ing.nome) }));
             const missing = resolved.filter(r => !r.match).map(r => r.ing.nome);
             if (missing.length > 0) {
-                const proceed = confirm(`⚠️ Questi ingredienti non sono presenti nel database e verrebbero inseriti con 0 kcal:\n\n${missing.join(', ')}\n\nOK = inserisci comunque il pasto\nAnnulla = non inserire nulla`);
-                if (!proceed) return;
+                const proceedMeal = await appConfirm(`⚠️ Questi ingredienti non sono presenti nel database e verrebbero inseriti con 0 kcal:\n\n${missing.join(', ')}\n\nVuoi inserire comunque il pasto?`, { confirmText: 'Inserisci comunque' });
+                if (!proceedMeal) return;
             }
 
             resolved.forEach(({ ing, match }) => {
@@ -3169,7 +3424,7 @@
                 if (personalBackup) localStorage.setItem('personalFoodsDatabase', JSON.stringify(personalBackup));
                 loadFoodStorage();
 
-                alert("✅ Backup ripristinato con successo!");
+                showToast("✅ Backup ripristinato con successo!");
                 currentSex = appData.lockedSex || appData.activeSex || 'M';
                 appData.activeSex = currentSex;
                 document.getElementById('sexSelect').value = currentSex;
@@ -3180,7 +3435,7 @@
                 renderSavedRecipes();
                 showWelcomePopUp();
             } catch (err) {
-                alert("File di backup non valido.");
+                appAlert("File di backup non valido.");
             }
         };
         reader.readAsText(file);
@@ -3197,7 +3452,7 @@
         const sale = parseFloat(document.getElementById('newFoodSale').value) || 0;
 
         if (!name || isNaN(kcal)) {
-            alert("Inserisci il nome e le Kcal dell'alimento.");
+            appAlert("Inserisci il nome e le Kcal dell'alimento.");
             return;
         }
 
@@ -3207,7 +3462,7 @@
         localStorage.setItem('personalFoodsDatabase', JSON.stringify(personalFoods));
         rebuildFoodDatabase();
 
-        alert(`✅ Alimento salvato su questo telefono!`);
+        showToast(`✅ Alimento salvato su questo telefono!`);
 
         document.getElementById('newFoodName').value = '';
         document.getElementById('newFoodKcal').value = '';
