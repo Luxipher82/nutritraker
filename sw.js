@@ -1,8 +1,12 @@
-const CACHE_NAME = 'nutritracker-cache-v9';
+const CACHE_NAME = 'nutritracker-cache-v10';
 const urlsToCache = [
     './',
     './index.html',
     './manifest.json',
+    './icon-192.png',
+    './icon-512.png',
+    './icon-water.png',
+    './icon-weight.png',
     'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
 ];
 
@@ -40,9 +44,10 @@ self.addEventListener('fetch', event => {
         return;
     }
 
-    // Per tutte le altre risorse: Cache First con salvataggio dinamico della rete
+    // Per tutte le altre risorse: Cache First con salvataggio dinamico della rete.
+    // ignoreSearch: i link degli shortcut (index.html?action=...) trovano comunque index.html in cache, anche offline.
     event.respondWith(
-        caches.match(event.request).then(cachedResponse => {
+        caches.match(event.request, { ignoreSearch: true }).then(cachedResponse => {
             if (cachedResponse) {
                 return cachedResponse;
             }
