@@ -9,12 +9,14 @@
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ],
   "shortcuts": [
@@ -25,8 +27,22 @@
       "url": "./index.html?action=add_water",
       "icons": [
         {
-          "src": "icon-192.png",
-          "sizes": "192x192"
+          "src": "icon-water.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Registra peso",
+      "short_name": "Peso",
+      "description": "Apri il profilo per registrare la pesata",
+      "url": "./index.html?action=weight",
+      "icons": [
+        {
+          "src": "icon-weight.png",
+          "sizes": "192x192",
+          "type": "image/png"
         }
       ]
     }
