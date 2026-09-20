@@ -104,6 +104,12 @@
             border-color: var(--primary);
         }
 
+        /* Campi e pulsanti bloccati (profilo confermato) */
+        input:disabled, select:disabled, button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .autocomplete-results {
             position: absolute;
             top: 100%;
@@ -785,9 +791,9 @@
 
     <!-- DIARIO ALIMENTARE -->
     <div class="card">
-        <div id="editingBanner" style="display:none; background:#dbeafe; border:1px solid #bfdbfe; color:#1e40af; padding:6px 10px; border-radius:6px; font-size:0.8rem; margin-bottom:10px; justify-content:space-between; align-items:center;">
-            <span>✏️ Stai modificando la giornata del <strong id="editingDateLabel"></strong></span>
-            <button data-haptic="tap" onclick="cancelEditingHistory()" style="width:auto; padding:3px 8px; font-size:0.75rem; background:#3b82f6;">Annulla</button>
+        <div id="editingBanner" style="display:none; background:#dbeafe; border:1px solid #bfdbfe; color:#1e40af; padding:6px 10px; border-radius:6px; font-size:0.8rem; margin-bottom:10px; justify-content:space-between; align-items:center; gap:8px;">
+            <span>✏️ Stai modificando la giornata del <strong id="editingDateLabel"></strong> (salvataggio automatico)</span>
+            <button data-haptic="tap" onclick="cancelEditingHistory()" style="width:auto; padding:3px 8px; font-size:0.75rem; background:#3b82f6; white-space:nowrap;">Fine modifica</button>
         </div>
 
         <h3>Diario Alimentare di Oggi</h3>
@@ -939,7 +945,10 @@
             Totale Bruciato Oggi: 0 kcal
         </div>
 
-        <button data-haptic="success" onclick="saveDay()" style="width: 100%; background-color: var(--success); padding: 10px; font-size: 0.92rem;">Salva Giornata nello Storico</button>
+        <!-- Nessun pulsante di salvataggio: a mezzanotte la giornata passa automaticamente nello storico -->
+        <div class="macro-note" style="text-align: center;">
+            💾 Salvataggio automatico: a mezzanotte la giornata passa nello storico.
+        </div>
     </div>
 
 </div>
@@ -966,10 +975,11 @@
                 </select>
             </div>
             <div class="form-group">
-                <label for="age">Età</label>
-                <input type="number" id="age" value="30" oninput="calculateTDEE()">
+                <label for="birthDate">Data di nascita</label>
+                <input type="date" id="birthDate" min="1900-01-01" onchange="onBirthDateChange()">
             </div>
         </div>
+        <div class="macro-note" id="ageInfo" style="margin-top: -6px;"></div>
 
         <div class="row">
             <div class="form-group">
@@ -1022,7 +1032,7 @@
                     <input type="number" id="macroInputG" min="0" max="100" step="1" inputmode="decimal" oninput="onMacroCustomInput()">
                 </div>
             </div>
-            <button class="btn-secondary" data-haptic="tap" onclick="autoBalanceCustomMacros()" style="margin-bottom: 8px;">⚖️ Bilancia automaticamente a 100%</button>
+            <button id="macroBalanceBtn" class="btn-secondary" data-haptic="tap" onclick="autoBalanceCustomMacros()" style="margin-bottom: 8px;">⚖️ Bilancia automaticamente a 100%</button>
         </div>
 
         <div id="macroSumStatus" class="macro-sum-status ok">✓ Somma 100%</div>
@@ -1032,6 +1042,15 @@
 
         <div class="macro-grams-grid" id="macroGramsGrid"></div>
         <div class="macro-note" id="macroNote"></div>
+
+        <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--border);">
+
+        <!-- CONFERMA / MODIFICA PROFILO -->
+        <div id="profileLockBox" style="background: var(--bg-color); border: 1px solid var(--border); border-radius: 8px; padding: 10px;">
+            <button id="confirmProfileBtn" data-haptic="success" onclick="confirmProfile()" style="width: 100%; background-color: var(--success); padding: 8px;">✅ Conferma Profilo</button>
+            <button id="editProfileBtn" class="btn-secondary" data-haptic="tap" onclick="startProfileEdit()" style="width: 100%; padding: 8px; display: none;">✏️ Modifica Profilo</button>
+            <div class="macro-note" id="profileLockNote"></div>
+        </div>
 
         <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--border);">
 
@@ -1048,8 +1067,6 @@
             <label>Grafico Andamento Peso:</label>
             <canvas id="weightChart"></canvas>
         </div>
-
-        <button onclick="resetCurrentProfileData()" data-haptic="warn" class="btn-danger" style="margin-top: 10px; width: 100%; padding: 8px;">🗑️ Azzera Dati e Pesate di questo Profilo</button>
     </div>
 </div>
 
@@ -1172,27 +1189,6 @@
 <script>
     const GITHUB_EXCEL_URL = 'https://raw.githubusercontent.com/Luxipher82/nutritraker/main/database.xlsx';
 
-    const BASE_FOOD_DATABASE = [
-        { marca: 'Primia', nome: 'Yogurt Greco', kcal: 58, c: 4.5, g: 0.1, p: 10, zuccheri: 4.0, saturi: 0.0, sale: 0.1, porzione_g: 150 },
-        { marca: 'Primia', nome: 'Pasta', kcal: 307, c: 61, g: 1.1, p: 12, zuccheri: 2.0, saturi: 0.2, sale: 0.01, porzione_g: 80 },
-        { marca: '', nome: 'Olio Extravergine', kcal: 900, c: 0, g: 100, p: 0, zuccheri: 0, saturi: 14, sale: 0, porzione_g: 10 },
-        { marca: 'Santa Lucia', nome: 'Ricotta Light', kcal: 112, c: 5.5, g: 6, p: 9, zuccheri: 3.5, saturi: 4.1, sale: 0.4, porzione_g: 90 },
-        { marca: 'Del Zoppo', nome: 'Bresaola', kcal: 165, c: 0.5, g: 3, p: 34, zuccheri: 0.1, saturi: 1.1, sale: 3.5, porzione_g: 50 },
-        { marca: 'Mare Blù', nome: 'Tonno Vero Naturale', kcal: 103, c: 0, g: 0.8, p: 24, zuccheri: 0, saturi: 0.2, sale: 1.1, porzione_g: 56 },
-        { marca: 'Rizzoli', nome: 'Sgombro', kcal: 119, c: 0, g: 3, p: 23, zuccheri: 0, saturi: 0.8, sale: 1.2, porzione_g: 90 },
-        { marca: 'Mulino Bianco', nome: 'Pane a Fette Integrale', kcal: 275, c: 38, g: 6.8, p: 11, zuccheri: 5.5, saturi: 0.9, sale: 1.3, porzione_g: 23 },
-        { marca: 'Primia', nome: 'Riso Parboiled', kcal: 349, c: 78, g: 0.8, p: 6.9, zuccheri: 0.2, saturi: 0.2, sale: 0.01, porzione_g: 80 },
-        { marca: 'Primia', nome: 'Riso Basmati', kcal: 354, c: 80, g: 0.4, p: 6.7, zuccheri: 0.1, saturi: 0.1, sale: 0.01, porzione_g: 80 },
-        { marca: '', nome: 'Petto di Pollo', kcal: 96, c: 0, g: 0.6, p: 22, zuccheri: 0, saturi: 0.2, sale: 0.1, porzione_g: 150 },
-        { marca: 'Ferrarini', nome: 'Prosciutto Cotto', kcal: 158, c: 0.4, g: 8.5, p: 19.6, zuccheri: 0.4, saturi: 3.2, sale: 1.8, porzione_g: 60 },
-        { marca: 'Fiorentini', nome: 'Avena', kcal: 403, c: 59, g: 6.3, p: 21, zuccheri: 1.2, saturi: 1.1, sale: 0.02, porzione_g: 40 },
-        { marca: 'Filippi', nome: 'Avena', kcal: 364, c: 60, g: 6.2, p: 12, zuccheri: 1.1, saturi: 1.0, sale: 0.02, porzione_g: 40 },
-        { marca: 'Mila', nome: 'Latte Parzialmente Scremato No Lattosio', kcal: 47, c: 4.9, g: 1.6, p: 3.2, zuccheri: 4.9, saturi: 1.0, sale: 0.1, porzione_g: 200 },
-        { marca: '', nome: 'Pane Integrale', kcal: 253, c: 55.4, g: 1, p: 9, zuccheri: 3.2, saturi: 0.2, sale: 1.2, porzione_g: 50 },
-        { marca: '', nome: 'Banana', kcal: 93, c: 20, g: 0.2, p: 1.2, zuccheri: 12, saturi: 0.05, sale: 0.01, porzione_g: 120 },
-        { marca: '', nome: 'Mela', kcal: 52, c: 14, g: 0.2, p: 0.3, zuccheri: 10, saturi: 0.03, sale: 0.01, porzione_g: 150 }
-    ];
-
     /* ===== RIPARTIZIONE MACRO: PRESET E COSTANTI ===== */
     // Percentuali sulle kcal totali. Proteine e carboidrati = 4 kcal/g, grassi = 9 kcal/g.
     const KCAL_PER_GRAM = { p: 4, c: 4, g: 9 };
@@ -1209,6 +1205,9 @@
     const DEFAULT_MACRO_PRESET = 'bilanciata';
     const DEFAULT_CUSTOM_SPLIT = { p: 30, c: 40, g: 30 };
 
+    // Sotto questa quota del target (kcal nette) il commento diventa un avviso di deficit elevato
+    const LOW_INTAKE_RATIO = 0.70;
+
     function newMacroFields() {
         return {
             macroPreset: DEFAULT_MACRO_PRESET,
@@ -1216,28 +1215,110 @@
         };
     }
 
-    let FOOD_DATABASE = [...BASE_FOOD_DATABASE];
+    function defaultProfile(sex) {
+        return {
+            age: sex === 'M' ? 40 : 30,   // età di riserva, usata solo finché non c'è la data di nascita
+            birthDate: '',                // formato AAAA-MM-GG
+            height: sex === 'M' ? 175 : 165,
+            activity: 1.55,
+            deficitPct: 10,
+            targetKcal: 0,
+            weightHistory: [],
+            ...newMacroFields()
+        };
+    }
+
+    let FOOD_DATABASE = [];   // = alimenti Excel + alimenti personali
+    let excelFoods = [];      // alimenti scaricati dall'Excel (fonte principale, aggiornata da te)
+    let personalFoods = [];   // alimenti aggiunti dall'utente, restano solo su questo telefono
     let currentDayFoods = [];
     let currentDayActivities = [];
     let currentWaterMl = 0;
     let waterTargetMl = 2000;
     let recipeDraftIngredients = [];
     let todayTotals = { p: 0, c: 0, g: 0 };
+    let searchMatchesCache = {};
 
     let currentSex = 'M';
     let editingEntryDate = null;
-    let frozenTodayDraft = null;
+    let currentDayDate = null;   // data a cui appartengono i dati del diario in memoria
+    let lastKnownDate = null;    // ultima data osservata, per rilevare il cambio giorno
 
     let appData = {
         userName: '',
         activeSex: 'M',
+        lockedSex: null,        // profilo confermato (bloccato); null = profilo ancora modificabile
+        profileEditing: false,  // true = "Modifica Profilo" attiva (attività, deficit e macro sbloccati)
         profiles: {
-            F: { age: 30, height: 165, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [], ...newMacroFields() },
-            M: { age: 40, height: 175, activity: 1.55, deficitPct: 10, targetKcal: 0, weightHistory: [], ...newMacroFields() }
+            F: defaultProfile('F'),
+            M: defaultProfile('M')
         },
         recipes: [],
         entries: []
     };
+
+    /* ===== UTILITÀ ===== */
+    // Neutralizza apostrofi, virgolette e simboli HTML nei nomi inseriti dall'utente
+    function escapeHtml(value) {
+        return String(value === undefined || value === null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function getTodayStr() {
+        return new Date().toLocaleDateString('it-IT');
+    }
+
+    function safeParseArray(str) {
+        if (typeof str !== 'string') return null;
+        try {
+            const arr = JSON.parse(str);
+            return Array.isArray(arr) ? arr : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /* ===== DATA DI NASCITA ED ETÀ ===== */
+    function isValidBirthDate(str) {
+        if (typeof str !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(str)) return false;
+        const parts = str.split('-').map(Number);
+        const y = parts[0], m = parts[1], d = parts[2];
+        const date = new Date(y, m - 1, d);
+        if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return false;
+        if (y < 1900) return false;
+        if (date.getTime() > Date.now()) return false;
+        return computeAgeFromBirthDate(str) <= 120;
+    }
+
+    function computeAgeFromBirthDate(str) {
+        const parts = str.split('-').map(Number);
+        const now = new Date();
+        let age = now.getFullYear() - parts[0];
+        const monthDiff = (now.getMonth() + 1) - parts[1];
+        if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < parts[2])) age--;
+        return age;
+    }
+
+    function formatBirthDateIt(str) {
+        const p = str.split('-');
+        return `${p[2]}/${p[1]}/${p[0]}`;
+    }
+
+    // Età calcolata dalla data di nascita; senza data si usa l'età già salvata
+    function getProfileAge(prof) {
+        if (isValidBirthDate(prof.birthDate)) return computeAgeFromBirthDate(prof.birthDate);
+        return (typeof prof.age === 'number' && prof.age > 0) ? prof.age : 30;
+    }
+
+    function todayIsoDate() {
+        const d = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
 
     /* ===== FEEDBACK TATTILE (VIBRAZIONE) CON FALLBACK ===== */
     const HAPTIC_PATTERNS = {
@@ -1282,27 +1363,132 @@
         haptic(el.getAttribute('data-haptic') || 'tap', el);
     }, true);
 
-    window.onload = function() {
-        const customFoods = localStorage.getItem('customFoodsDatabase');
-        if (customFoods) {
-            try {
-                FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...JSON.parse(customFoods)];
-            } catch(e){}
+    /* ===== ALIMENTI: EXCEL (fonte principale) + PERSONALI (solo su questo telefono) ===== */
+    function rebuildFoodDatabase() {
+        FOOD_DATABASE = [...excelFoods, ...personalFoods];
+    }
+
+    function loadFoodStorage() {
+        let excel = safeParseArray(localStorage.getItem('customFoodsDatabase')) || [];
+        let personal = safeParseArray(localStorage.getItem('personalFoodsDatabase')) || [];
+
+        // Migrazione: in passato gli alimenti "Personalizzato" venivano salvati insieme a quelli dell'Excel
+        const legacyPersonal = excel.filter(f => f && f.marca === 'Personalizzato');
+        if (legacyPersonal.length > 0) {
+            excel = excel.filter(f => !(f && f.marca === 'Personalizzato'));
+            legacyPersonal.forEach(f => {
+                if (!personal.some(p => p && p.nome === f.nome)) personal.push(f);
+            });
+            localStorage.setItem('customFoodsDatabase', JSON.stringify(excel));
+            localStorage.setItem('personalFoodsDatabase', JSON.stringify(personal));
         }
+
+        excelFoods = excel;
+        personalFoods = personal;
+        rebuildFoodDatabase();
+    }
+
+    function findFoodMatch(inputName) {
+        const query = String(inputName || '').trim().toLowerCase();
+        return FOOD_DATABASE.find(f => {
+            const marcaStr = String(f.marca || '').toLowerCase();
+            const nomeStr = String(f.nome || '').toLowerCase();
+            const label = (marcaStr && marcaStr !== 'web') ? `${nomeStr} (${marcaStr})` : nomeStr;
+            return label === query || nomeStr === query;
+        });
+    }
+
+    /* ===== NORMALIZZAZIONE DATI (MIGRAZIONE DA VERSIONI PRECEDENTI E BACKUP VECCHI) ===== */
+    function normalizeEntry(e) {
+        // Nota: targetKcal e waterTargetMl non hanno un valore di default, così le giornate vecchie si riconoscono
+        const entry = {
+            id: Date.now() + Math.random(),
+            date: '',
+            profileSex: 'M',
+            hasActivity: false,
+            activityText: 'Nessuna',
+            foodSummary: '',
+            waterMl: 0,
+            totalKcal: 0,
+            totalProt: '0.0',
+            totalFat: '0.0',
+            totalCarb: '0.0',
+            totalZuccheri: '0.0',
+            totalSaturi: '0.0',
+            totalSale: '0.00',
+            comment: '',
+            rawFoods: [],
+            rawActivities: [],
+            ...e
+        };
+        if (entry.profileSex !== 'F' && entry.profileSex !== 'M') entry.profileSex = 'M';
+        if (!Array.isArray(entry.rawFoods)) entry.rawFoods = [];
+        if (!Array.isArray(entry.rawActivities)) entry.rawActivities = [];
+        return entry;
+    }
+
+    function normalizeAppData(raw) {
+        const num = (v, d) => (typeof v === 'number' && isFinite(v)) ? v : d;
+        const src = (raw && typeof raw === 'object') ? raw : {};
+
+        const out = {
+            userName: typeof src.userName === 'string' ? src.userName : '',
+            activeSex: src.activeSex === 'F' ? 'F' : 'M',
+            lockedSex: (src.lockedSex === 'F' || src.lockedSex === 'M') ? src.lockedSex : null,
+            profileEditing: false,
+            profiles: { F: defaultProfile('F'), M: defaultProfile('M') },
+            recipes: Array.isArray(src.recipes)
+                ? src.recipes.filter(r => r && typeof r === 'object' && Array.isArray(r.ingredients))
+                : [],
+            entries: Array.isArray(src.entries)
+                ? src.entries.filter(e => e && typeof e === 'object').map(normalizeEntry)
+                : []
+        };
+        out.profileEditing = !!(out.lockedSex && src.profileEditing);
+
+        ['F', 'M'].forEach(sex => {
+            const d = defaultProfile(sex);
+            const p = (src.profiles && typeof src.profiles[sex] === 'object' && src.profiles[sex]) ? src.profiles[sex] : {};
+            const history = Array.isArray(p.weightHistory)
+                ? p.weightHistory
+                    .filter(h => h && typeof h.weight === 'number' && isFinite(h.weight))
+                    .map(h => ({ date: h.date || '', weight: h.weight, timestamp: num(h.timestamp, Date.now()) }))
+                : [];
+
+            out.profiles[sex] = {
+                ...d,
+                ...p,
+                age: num(p.age, d.age),
+                birthDate: isValidBirthDate(p.birthDate) ? p.birthDate : '',
+                height: num(p.height, d.height),
+                activity: num(p.activity, d.activity),
+                deficitPct: num(p.deficitPct, d.deficitPct),
+                targetKcal: num(p.targetKcal, 0),
+                weightHistory: history
+            };
+            ensureMacroDefaults(out.profiles[sex]);
+        });
+
+        if (out.lockedSex) out.activeSex = out.lockedSex;
+        return out;
+    }
+
+    window.onload = function() {
+        loadFoodStorage();
 
         const savedData = localStorage.getItem('nutritionTrackerDataWeb');
         if (savedData) {
             try {
-                const parsed = JSON.parse(savedData);
-                if (parsed.profiles) {
-                    appData = parsed;
-                }
+                appData = normalizeAppData(JSON.parse(savedData));
             } catch(e){}
         }
 
-        currentSex = appData.activeSex || 'M';
+        currentSex = appData.lockedSex || appData.activeSex || 'M';
+        appData.activeSex = currentSex;
         document.getElementById('sexSelect').value = currentSex;
         document.getElementById('userNameInput').value = appData.userName || '';
+
+        lastKnownDate = getTodayStr();
 
         initMacroPresetSelect();
         loadProfileUI();
@@ -1310,6 +1496,14 @@
         renderHistory();
         renderSavedRecipes();
         showWelcomePopUp();
+
+        // Cambio giorno: controllo a mezzanotte, ogni 30 secondi e al ritorno nell'app
+        scheduleMidnightCheck();
+        setInterval(checkDayRollover, 30000);
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) checkDayRollover();
+        });
+        window.addEventListener('focus', checkDayRollover);
 
         syncDatabaseFromGithub(false);
 
@@ -1341,8 +1535,8 @@
     }
 
     function showWelcomePopUp() {
-        const name = appData.userName ? appData.userName : '';
-        const todayStr = new Date().toLocaleDateString('it-IT');
+        const name = appData.userName ? escapeHtml(appData.userName) : '';
+        const todayStr = getTodayStr();
         const lastVisitDate = localStorage.getItem('lastVisitDateNutriTracker');
 
         let message = '';
@@ -1369,14 +1563,20 @@
         }
     }
 
-    function getCurrentWeight() {
-        const prof = appData.profiles[currentSex];
-        if (prof.weightHistory.length > 0) {
+    function getWeightFor(sex) {
+        const prof = appData.profiles[sex];
+        if (prof && prof.weightHistory.length > 0) {
             return prof.weightHistory[prof.weightHistory.length - 1].weight;
         }
-        const inputVal = parseFloat(document.getElementById('currentWeightInput').value);
-        if (!isNaN(inputVal) && inputVal > 0) return inputVal;
-        return currentSex === 'M' ? 75 : 60;
+        if (sex === currentSex) {
+            const inputVal = parseFloat(document.getElementById('currentWeightInput').value);
+            if (!isNaN(inputVal) && inputVal > 0) return inputVal;
+        }
+        return sex === 'M' ? 75 : 60;
+    }
+
+    function getCurrentWeight() {
+        return getWeightFor(currentSex);
     }
 
     function syncDatabaseFromGithub(showSuccessAlert) {
@@ -1461,16 +1661,23 @@
         }
 
         if (importedFoods.length > 0) {
-            FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...importedFoods];
+            // L'Excel sostituisce solo la parte "Excel": gli alimenti personali non vengono toccati
+            excelFoods = importedFoods;
             localStorage.setItem('customFoodsDatabase', JSON.stringify(importedFoods));
+            rebuildFoodDatabase();
             updateTodaySummary();
         }
     }
 
     function switchProfile() {
+        // Profilo confermato: il sesso non può più essere cambiato
+        if (appData.lockedSex) {
+            document.getElementById('sexSelect').value = currentSex;
+            return;
+        }
+
         const oldProf = appData.profiles[currentSex];
         if (oldProf) {
-            oldProf.age = parseFloat(document.getElementById('age').value) || oldProf.age;
             oldProf.height = parseFloat(document.getElementById('height').value) || oldProf.height;
             oldProf.activity = parseFloat(document.getElementById('activity').value) || oldProf.activity;
             oldProf.deficitPct = parseFloat(document.getElementById('deficitSelect').value) || oldProf.deficitPct;
@@ -1495,7 +1702,11 @@
             if (metaTheme) metaTheme.setAttribute('content', '#ec4899');
         }
 
-        document.getElementById('age').value = prof.age;
+        const birthInput = document.getElementById('birthDate');
+        birthInput.max = todayIsoDate();
+        birthInput.value = prof.birthDate || '';
+
+        document.getElementById('sexSelect').value = currentSex;
         document.getElementById('height').value = prof.height;
         document.getElementById('activity').value = prof.activity;
         document.getElementById('deficitSelect').value = prof.deficitPct;
@@ -1509,50 +1720,273 @@
         calculateWaterTarget();
         calculateTDEE();
         renderMacroSection();
+        applyProfileLockUI();
         checkWeightReminder();
     }
 
-    function resetCurrentProfileData() {
-        const profileLabel = currentSex === 'M' ? "Uomo" : "Donna";
-        if (confirm(`Sei sicuro di voler azzerare le pesate e i parametri del Profilo ${profileLabel}? I tuoi pasti salvati e il diario non verranno cancellati.`)) {
-            appData.profiles[currentSex] = {
-                age: currentSex === 'M' ? 40 : 30,
-                height: currentSex === 'M' ? 175 : 165,
-                activity: 1.55,
-                deficitPct: 10,
-                targetKcal: 0,
-                weightHistory: [],
-                ...newMacroFields()
-            };
-            saveDataToStorage();
-            loadProfileUI();
-            drawWeightChart();
-            alert(`✅ Dati del Profilo ${profileLabel} azzerati con successo!`);
+    /* ===== CONFERMA, BLOCCO E MODIFICA DEL PROFILO ===== */
+    // Bloccati per sempre dopo la conferma: sesso, altezza, data di nascita.
+    // Bloccati dopo la conferma, sbloccabili con "Modifica Profilo": attività generale, deficit, ripartizione macro.
+    function isProfileSoftLocked() {
+        return !!appData.lockedSex && !appData.profileEditing;
+    }
+
+    function applyProfileLockUI() {
+        const locked = !!appData.lockedSex;
+        const editing = locked && !!appData.profileEditing;
+        const softLocked = locked && !editing;
+        const prof = appData.profiles[currentSex];
+        const hasBirth = !!(prof && isValidBirthDate(prof.birthDate));
+
+        ['sexSelect', 'height'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = locked;
+        });
+
+        // La data di nascita si sblocca solo se manca in un profilo già confermato (inserimento una tantum)
+        const birthInput = document.getElementById('birthDate');
+        if (birthInput) birthInput.disabled = locked && hasBirth;
+
+        ['activity', 'deficitSelect', 'macroPresetSelect', 'macroInputP', 'macroInputC', 'macroInputG', 'macroBalanceBtn'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.disabled = softLocked;
+        });
+
+        const confirmBtn = document.getElementById('confirmProfileBtn');
+        if (confirmBtn) confirmBtn.style.display = (!locked || editing) ? 'block' : 'none';
+        const editBtn = document.getElementById('editProfileBtn');
+        if (editBtn) editBtn.style.display = softLocked ? 'block' : 'none';
+
+        const note = document.getElementById('profileLockNote');
+        if (note) {
+            let text;
+            if (!locked) {
+                text = 'Dopo la conferma sesso, altezza e data di nascita non potranno più essere modificati. Attività generale, deficit e ripartizione macro si potranno cambiare con "Modifica Profilo". Nome e peso restano sempre modificabili.';
+            } else if (editing) {
+                text = '✏️ Modifica in corso: cambia attività generale, deficit o ripartizione macro, poi premi "Conferma Profilo".';
+            } else {
+                text = '🔒 Profilo confermato. Con "Modifica Profilo" puoi cambiare attività generale, deficit e ripartizione macro. Nome e peso restano sempre modificabili.';
+            }
+            if (locked && !hasBirth) {
+                text += ' ⚠️ Inserisci la tua data di nascita: si può fare una sola volta.';
+            }
+            note.textContent = text;
         }
     }
 
-    function autoSaveDraft() {
-        if (editingEntryDate) return;
+    function updateAgeInfo() {
+        const info = document.getElementById('ageInfo');
+        const prof = appData.profiles[currentSex];
+        if (!info || !prof) return;
 
-        const todayStr = new Date().toLocaleDateString('it-IT');
+        if (isValidBirthDate(prof.birthDate)) {
+            info.textContent = `Età calcolata: ${computeAgeFromBirthDate(prof.birthDate)} anni`;
+        } else {
+            info.textContent = `Età salvata: ${getProfileAge(prof)} anni. Inserisci la data di nascita per aggiornarla in automatico.`;
+        }
+    }
+
+    function onBirthDateChange() {
+        const input = document.getElementById('birthDate');
+        const prof = appData.profiles[currentSex];
+        const value = input.value;
+
+        if (!isValidBirthDate(value)) {
+            if (value) alert("Data di nascita non valida.");
+            input.value = prof.birthDate || '';
+            return;
+        }
+
+        // Profilo già confermato ma senza data: inserimento una tantum, con conferma
+        if (appData.lockedSex && !prof.birthDate) {
+            if (!confirm(`Confermi la data di nascita ${formatBirthDateIt(value)}?\n\nNon potrà più essere modificata.`)) {
+                input.value = '';
+                return;
+            }
+        }
+
+        prof.birthDate = value;
+        calculateTDEE();
+        applyProfileLockUI();
+    }
+
+    function startProfileEdit() {
+        if (!appData.lockedSex || appData.profileEditing) return;
+
+        if (!confirm('Vuoi modificare attività generale, deficit e ripartizione macro?\n\nSesso, altezza e data di nascita restano bloccati. Al termine premi "Conferma Profilo".')) {
+            return;
+        }
+
+        appData.profileEditing = true;
+        saveDataToStorage();
+        applyProfileLockUI();
+    }
+
+    function confirmProfile() {
+        const firstTime = !appData.lockedSex;
+        if (!firstTime && !appData.profileEditing) return;
+
+        const prof = appData.profiles[currentSex];
+
+        if (prof.macroPreset === 'personalizzata' && !isValidSplit(readCustomMacroInputs())) {
+            alert("⚠️ La somma delle percentuali macro deve essere 100% prima di confermare il profilo.");
+            return;
+        }
+        if (firstTime && !isValidBirthDate(prof.birthDate)) {
+            alert("⚠️ Inserisci la data di nascita prima di confermare il profilo.");
+            return;
+        }
+
+        const profileLabel = currentSex === 'M' ? "Uomo" : "Donna";
+        const message = firstTime
+            ? `Dopo la conferma NON potrai più modificare sesso, altezza e data di nascita. Attività generale, deficit e ripartizione macro potrai cambiarli con "Modifica Profilo". Nome e peso restano sempre modificabili.\n\nConfermi il profilo ${profileLabel}?`
+            : 'Confermi le modifiche a attività generale, deficit e ripartizione macro?';
+        if (!confirm(message)) return;
+
+        calculateTDEE(); // fissa i valori correnti
+        appData.lockedSex = currentSex;
+        appData.activeSex = currentSex;
+        appData.profileEditing = false;
+        saveDataToStorage();
+        applyProfileLockUI();
+        renderHistory();
+        alert(firstTime ? "🔒 Profilo confermato." : "🔒 Modifiche confermate.");
+    }
+
+    /* ===== BOZZA DEL GIORNO, SALVATAGGIO AUTOMATICO E CAMBIO GIORNO ===== */
+    function autoSaveDraft() {
+        // Se stai modificando un giorno dello storico, le modifiche vengono salvate direttamente su quel giorno
+        if (editingEntryDate) {
+            saveEditedEntry();
+            return;
+        }
+
+        const prof = appData.profiles[currentSex] || {};
         const draft = {
-            date: todayStr,
+            date: currentDayDate || getTodayStr(),
             profileSex: currentSex,
             currentDayFoods: currentDayFoods,
             currentDayActivities: currentDayActivities,
-            currentWaterMl: currentWaterMl
+            currentWaterMl: currentWaterMl,
+            // Target di quel momento: verranno salvati insieme alla giornata
+            targetKcal: prof.targetKcal || 0,
+            waterTargetMl: waterTargetMl
         };
         localStorage.setItem(`todayDraftNutriTracker_${currentSex}`, JSON.stringify(draft));
     }
 
+    function saveEditedEntry() {
+        const idx = appData.entries.findIndex(e => e.date === editingEntryDate && e.profileSex === currentSex);
+        if (idx === -1) {
+            loadDraftFromStorage();
+            return;
+        }
+        const old = appData.entries[idx];
+        // Si mantengono i target salvati in quella giornata (le giornate vecchie, senza target, usano quello attuale)
+        const targets = { targetKcal: old.targetKcal, waterTargetMl: old.waterTargetMl };
+        appData.entries[idx] = buildEntry(editingEntryDate, currentSex, currentDayFoods, currentDayActivities, currentWaterMl, old.id, targets);
+        saveDataToStorage();
+        renderHistory();
+    }
+
+    // Sposta nello storico le bozze dei giorni precedenti (chiusura automatica della giornata)
+    function closePastDrafts() {
+        const todayStr = getTodayStr();
+        const keysToRemove = [];
+        let changed = false;
+
+        ['F', 'M'].forEach(sex => {
+            const key = `todayDraftNutriTracker_${sex}`;
+            const draftStr = localStorage.getItem(key);
+            if (!draftStr) return;
+
+            let draft = null;
+            try { draft = JSON.parse(draftStr); } catch (e) { draft = null; }
+            if (!draft || !draft.date) {
+                keysToRemove.push(key);
+                return;
+            }
+            if (draft.date === todayStr) return;
+
+            const foods = Array.isArray(draft.currentDayFoods) ? draft.currentDayFoods : [];
+            const acts = Array.isArray(draft.currentDayActivities) ? draft.currentDayActivities : [];
+            const water = draft.currentWaterMl || 0;
+
+            if (foods.length > 0 || acts.length > 0 || water > 0) {
+                const existingIdx = appData.entries.findIndex(e => e.date === draft.date && e.profileSex === sex);
+                const targets = { targetKcal: draft.targetKcal, waterTargetMl: draft.waterTargetMl };
+                const entry = buildEntry(draft.date, sex, foods, acts, water, existingIdx !== -1 ? appData.entries[existingIdx].id : null, targets);
+                if (existingIdx !== -1) {
+                    appData.entries[existingIdx] = entry;
+                } else {
+                    appData.entries.unshift(entry);
+                }
+                changed = true;
+            }
+            keysToRemove.push(key);
+        });
+
+        if (changed) {
+            saveDataToStorage();
+            renderHistory();
+        }
+        keysToRemove.forEach(k => localStorage.removeItem(k));
+    }
+
+    function checkDayRollover() {
+        const today = getTodayStr();
+        if (today !== lastKnownDate) {
+            lastKnownDate = today;
+            handleDayChange();
+        }
+    }
+
+    function handleDayChange() {
+        // Aggiorna la bozza del giorno appena finito (con i target correnti), poi la chiude nello storico
+        if (!editingEntryDate && currentDayDate && currentDayDate !== getTodayStr()) {
+            autoSaveDraft();
+        }
+        loadDraftFromStorage(); // chiude i giorni precedenti e apre il nuovo giorno
+        showWelcomePopUp();
+    }
+
+    function scheduleMidnightCheck() {
+        const now = new Date();
+        const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 500);
+        setTimeout(function() {
+            checkDayRollover();
+            scheduleMidnightCheck();
+        }, next.getTime() - now.getTime());
+    }
+
     function loadDraftFromStorage() {
         editingEntryDate = null;
-        frozenTodayDraft = null;
         document.getElementById('editingBanner').style.display = 'none';
 
-        const todayStr = new Date().toLocaleDateString('it-IT');
-        const existingEntry = appData.entries.find(e => e.date === todayStr && e.profileSex === currentSex);
+        // Prima chiude nello storico i giorni precedenti rimasti in bozza
+        closePastDrafts();
 
+        const todayStr = getTodayStr();
+        currentDayDate = todayStr;
+
+        const draftStr = localStorage.getItem(`todayDraftNutriTracker_${currentSex}`);
+        if (draftStr) {
+            try {
+                const draft = JSON.parse(draftStr);
+                if (draft && draft.date === todayStr) {
+                    currentDayFoods = Array.isArray(draft.currentDayFoods) ? draft.currentDayFoods : [];
+                    currentDayActivities = Array.isArray(draft.currentDayActivities) ? draft.currentDayActivities : [];
+                    currentWaterMl = draft.currentWaterMl || 0;
+                    updateTodaySummary();
+                    updateActivitiesSummary();
+                    updateWaterDisplay();
+                    return;
+                }
+            } catch(e){}
+        }
+
+        // Giornata di oggi salvata con la vecchia versione (pulsante manuale)
+        const existingEntry = appData.entries.find(e => e.date === todayStr && e.profileSex === currentSex);
         if (existingEntry) {
             currentDayFoods = existingEntry.rawFoods ? [...existingEntry.rawFoods] : [];
             currentDayActivities = existingEntry.rawActivities ? [...existingEntry.rawActivities] : [];
@@ -1563,24 +1997,6 @@
             return;
         }
 
-        const draftStr = localStorage.getItem(`todayDraftNutriTracker_${currentSex}`);
-        if (draftStr) {
-            try {
-                const draft = JSON.parse(draftStr);
-                if (draft.date === todayStr) {
-                    currentDayFoods = draft.currentDayFoods || [];
-                    currentDayActivities = draft.currentDayActivities || [];
-                    currentWaterMl = draft.currentWaterMl || 0;
-                    updateTodaySummary();
-                    updateActivitiesSummary();
-                    updateWaterDisplay();
-                    return;
-                } else {
-                    localStorage.removeItem(`todayDraftNutriTracker_${currentSex}`);
-                }
-            } catch(e){}
-        }
-
         currentDayFoods = [];
         currentDayActivities = [];
         currentWaterMl = 0;
@@ -1589,14 +2005,18 @@
         updateWaterDisplay();
     }
 
+    function computeWaterTargetFor(sex) {
+        const weight = getWeightFor(sex);
+        let target = sex === 'M' ? 2500 : 2000;
+
+        if (weight > 80) target += 300;
+        else if (weight < 55) target -= 200;
+
+        return target;
+    }
+
     function calculateWaterTarget() {
-        const lastWeight = getCurrentWeight();
-        let target = currentSex === 'M' ? 2500 : 2000;
-
-        if (lastWeight > 80) target += 300;
-        else if (lastWeight < 55) target -= 200;
-
-        waterTargetMl = target;
+        waterTargetMl = computeWaterTargetFor(currentSex);
         updateWaterDisplay();
     }
 
@@ -1613,13 +2033,15 @@
     }
 
     function calculateTDEE() {
-        const age = parseFloat(document.getElementById('age').value) || 30;
+        const prof = appData.profiles[currentSex];
+        ensureMacroDefaults(prof);
+
         const height = parseFloat(document.getElementById('height').value) || 165;
         const actFactor = parseFloat(document.getElementById('activity').value) || 1.55;
         const deficitPct = parseFloat(document.getElementById('deficitSelect').value) || 0;
 
-        const prof = appData.profiles[currentSex];
-        ensureMacroDefaults(prof);
+        // L'età si calcola dalla data di nascita (se presente), altrimenti resta quella salvata
+        const age = getProfileAge(prof);
         const currentWeight = getCurrentWeight();
 
         let bmr = (10 * currentWeight) + (6.25 * height) - (5 * age);
@@ -1641,6 +2063,7 @@
         updateActivitiesSummary();
         updateMacroTargetsDisplay();
         updateProgressBars();
+        updateAgeInfo();
     }
 
     function addWeightRecord() {
@@ -1682,14 +2105,32 @@
         drawWeightChart();
     }
 
+    // Grafico del peso nitido: la risoluzione del canvas si adatta alla dimensione reale e alla densità dello schermo
     function drawWeightChart() {
         const canvas = document.getElementById('weightChart');
         if (!canvas) return;
+
+        const cssW = canvas.clientWidth;
+        const cssH = canvas.clientHeight;
+        if (!cssW || !cssH) return; // drawer chiuso: verrà ridisegnato all'apertura
+
+        const dpr = window.devicePixelRatio || 1;
+        const pxW = Math.round(cssW * dpr);
+        const pxH = Math.round(cssH * dpr);
+        if (canvas.width !== pxW || canvas.height !== pxH) {
+            canvas.width = pxW;
+            canvas.height = pxH;
+        }
+
         const ctx = canvas.getContext('2d');
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
         const prof = appData.profiles[currentSex];
         const history = prof.weightHistory;
 
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, cssW, cssH);
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
 
         if (history.length < 1) {
             ctx.fillStyle = "#64748b";
@@ -1699,8 +2140,8 @@
         }
 
         const padding = 25;
-        const width = canvas.width - (padding * 2);
-        const height = canvas.height - (padding * 2);
+        const width = cssW - (padding * 2);
+        const height = cssH - (padding * 2);
 
         const weights = history.map(h => h.weight);
         let minW = Math.min(...weights) - 1;
@@ -1711,8 +2152,8 @@
         ctx.strokeStyle = "#cbd5e1";
         ctx.lineWidth = 1;
         ctx.moveTo(padding, padding);
-        ctx.lineTo(padding, canvas.height - padding);
-        ctx.lineTo(canvas.width - padding, canvas.height - padding);
+        ctx.lineTo(padding, cssH - padding);
+        ctx.lineTo(cssW - padding, cssH - padding);
         ctx.stroke();
 
         ctx.beginPath();
@@ -1720,8 +2161,8 @@
         ctx.lineWidth = 2;
 
         history.forEach((item, idx) => {
-            const x = history.length === 1 ? canvas.width / 2 : padding + (idx / (history.length - 1)) * width;
-            const y = canvas.height - padding - ((item.weight - minW) / (maxW - minW)) * height;
+            const x = history.length === 1 ? cssW / 2 : padding + (idx / (history.length - 1)) * width;
+            const y = cssH - padding - ((item.weight - minW) / (maxW - minW)) * height;
 
             if (idx === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
@@ -1729,8 +2170,8 @@
         ctx.stroke();
 
         history.forEach((item, idx) => {
-            const x = history.length === 1 ? canvas.width / 2 : padding + (idx / (history.length - 1)) * width;
-            const y = canvas.height - padding - ((item.weight - minW) / (maxW - minW)) * height;
+            const x = history.length === 1 ? cssW / 2 : padding + (idx / (history.length - 1)) * width;
+            const y = cssH - padding - ((item.weight - minW) / (maxW - minW)) * height;
 
             ctx.beginPath();
             ctx.fillStyle = "#ffffff";
@@ -1822,6 +2263,10 @@
     }
 
     function onMacroPresetChange() {
+        if (isProfileSoftLocked()) {
+            renderMacroSection();
+            return;
+        }
         const prof = appData.profiles[currentSex];
         prof.macroPreset = document.getElementById('macroPresetSelect').value;
         ensureMacroDefaults(prof);
@@ -1858,6 +2303,8 @@
 
     // Validazione automatica: la ripartizione viene applicata solo quando la somma è esattamente 100%
     function onMacroCustomInput() {
+        if (isProfileSoftLocked()) return;
+
         const prof = appData.profiles[currentSex];
         const values = readCustomMacroInputs();
         const valid = isValidSplit(values);
@@ -1874,6 +2321,8 @@
 
     // Riporta a 100% i valori inseriti mantenendo le proporzioni
     function autoBalanceCustomMacros() {
+        if (isProfileSoftLocked()) return;
+
         const raw = readCustomMacroInputs();
         const keys = ['p', 'c', 'g'];
         const clean = {};
@@ -2076,7 +2525,7 @@
             totKcal += a.kcal;
             const li = document.createElement('li');
             li.innerHTML = `
-                <span>🏃‍♂️ ${a.name} (${a.duration} min) - <strong>~${a.kcal} kcal</strong></span>
+                <span>🏃‍♂️ ${escapeHtml(a.name)} (${a.duration} min) - <strong>~${a.kcal} kcal</strong></span>
                 <button type="button" class="btn-danger-square" data-haptic="warn" onclick="removeActivity(${a.id})" title="Elimina">✕</button>
             `;
             list.appendChild(li);
@@ -2103,17 +2552,26 @@
         });
 
         if (matches.length > 0) {
-            resultsDiv.innerHTML = matches.map(f => {
+            // I risultati sono richiamati per posizione: nessun testo del nome finisce dentro l'attributo onclick
+            searchMatchesCache[meal] = matches.map(f => {
                 const marca = f.marca || '';
                 const nome = f.nome || 'Alimento';
                 const label = (marca && marca !== 'WEB') ? `${nome} (${marca})` : nome;
-                const portion = f.porzione_g || 100;
-                return `<div class="autocomplete-item" onclick="selectFoodForMeal('${meal}', '${label.replace(/'/g, "\\'")}', ${portion})">${label}</div>`;
-            }).join('');
+                return { label: label, portion: f.porzione_g || 100 };
+            });
+            resultsDiv.innerHTML = searchMatchesCache[meal].map((m, i) =>
+                `<div class="autocomplete-item" onclick="selectFoodByIndex('${meal}', ${i})">${escapeHtml(m.label)}</div>`
+            ).join('');
             resultsDiv.style.display = 'block';
         } else {
             resultsDiv.style.display = 'none';
         }
+    }
+
+    function selectFoodByIndex(meal, index) {
+        const item = (searchMatchesCache[meal] || [])[index];
+        if (!item) return;
+        selectFoodForMeal(meal, item.label, item.portion);
     }
 
     function selectFoodForMeal(meal, name, defaultGrams) {
@@ -2129,12 +2587,7 @@
 
         if (!inputName) return;
 
-        const match = FOOD_DATABASE.find(f => {
-            const marcaStr = String(f.marca || '').toLowerCase();
-            const nomeStr = String(f.nome || '').toLowerCase();
-            const label = (marcaStr && marcaStr !== 'web') ? `${nomeStr} (${marcaStr})` : nomeStr;
-            return label === inputName.toLowerCase() || nomeStr === inputName.toLowerCase();
-        });
+        const match = findFoodMatch(inputName);
 
         if (match) {
             const defaultPortion = parseFloat(match.porzione_g) || 100;
@@ -2166,6 +2619,10 @@
                 sale: Math.round(rawSale * factor * 100) / 100
             });
         } else {
+            // Alimento non presente nel database: avviso prima di inserirlo con valori a zero
+            const proceed = confirm(`⚠️ "${inputName}" non è presente nel database.\n\nOK = aggiungilo comunque (0 kcal e 0 macro)\nAnnulla = torna indietro`);
+            if (!proceed) return;
+
             if (!grams || isNaN(grams)) grams = 100;
             currentDayFoods.push({
                 id: Date.now() + Math.random(),
@@ -2223,7 +2680,7 @@
                 const li = document.createElement('li');
                 li.innerHTML = `
                     <div style="display: flex; flex-direction: column;">
-                        <span>${item.nome} (${item.grams}g) - <strong>${item.kcal} kcal</strong></span>
+                        <span>${escapeHtml(item.nome)} (${item.grams}g) - <strong>${item.kcal} kcal</strong></span>
                         <span class="food-macro-details">P: ${item.p}g | G: ${item.g}g | C: ${item.c}g</span>
                     </div>
                     <button type="button" class="btn-danger-square" data-haptic="warn" onclick="removeFood(${item.id})" title="Elimina">✕</button>
@@ -2262,35 +2719,38 @@
         updateProgressBars();
     }
 
-    function generateFeedback(totalKcal, targetKcal, waterMl) {
-        const totBurned = currentDayActivities.reduce((acc, a) => acc + a.kcal, 0);
+    /* ===== COMMENTO GIORNALIERO ===== */
+    // Kcal nette = introito - kcal bruciate con l'attività (l'attività compensa l'introito)
+    function generateFeedback(totalKcal, targetKcal, waterMl, activities, waterTarget) {
+        const totBurned = (activities || []).reduce((acc, a) => acc + (a.kcal || 0), 0);
         const netKcal = totalKcal - totBurned;
         const target = targetKcal || 1850;
-        const isWaterOk = waterMl >= waterTargetMl;
+        const isWaterOk = waterMl >= waterTarget;
 
         if (totalKcal === 0) return "Registra i pasti per calcolare il bilancio nutrizionale.";
 
-        let waterNote = isWaterOk ? " 💧 Ottima idratazione!" : " 💧 Ricorda di bere più acqua.";
+        const waterNote = isWaterOk ? " 💧 Ottima idratazione!" : " 💧 Ricorda di bere più acqua.";
 
-        if (currentDayActivities.length > 0 && Math.abs(netKcal - target) <= 150) {
-            return `🌟 <strong>Giornata perfetta!</strong> Attività svolte e bilancio calorico perfettamente centrato.${waterNote}`;
-        } else if (netKcal > target + 150) {
-            return `💪 <strong>Buon impegno!</strong> Introito di ${totalKcal} kcal. L'allenamento (~${totBurned} kcal bruciate) compensa l'eccedenza.${waterNote}`;
-        } else if (netKcal < target - 300) {
-            return `🍃 <strong>Giornata leggera!</strong> Introito contenuto rispetto al target di ${target} kcal.${waterNote}`;
+        if (netKcal < target * LOW_INTAKE_RATIO) {
+            return `⚠️ <strong>Deficit calorico molto elevato:</strong> se hai registrato tutto, presta attenzione e cerca di mangiare un po' di più domani.${waterNote}`;
+        } else if (netKcal <= target) {
+            return `🌟 <strong>Ottimo lavoro, continua così!</strong>${waterNote}`;
         } else {
-            return `✨ <strong>Bilancio sotto controllo!</strong> Giornata gestita con buon equilibrio.${waterNote}`;
+            return `💪 <strong>Cerca di fare meglio domani.</strong>${waterNote}`;
         }
     }
 
-    function saveDay() {
-        if (currentDayFoods.length === 0) return;
-
-        const prof = appData.profiles[currentSex];
-        const totBurned = currentDayActivities.reduce((acc, a) => acc + a.kcal, 0);
+    // Costruisce la registrazione di un giorno per lo storico.
+    // "targets" contiene i target di quel momento (kcal e acqua); se mancano si usano quelli attuali del profilo.
+    function buildEntry(date, sex, foods, activities, waterMl, existingId, targets) {
+        const prof = appData.profiles[sex] || {};
+        const t = targets || {};
+        const targetKcal = ((typeof t.targetKcal === 'number' && t.targetKcal > 0) ? t.targetKcal : (prof.targetKcal || 0)) || 1850;
+        const waterTarget = (typeof t.waterTargetMl === 'number' && t.waterTargetMl > 0) ? t.waterTargetMl : computeWaterTargetFor(sex);
+        const totBurned = activities.reduce((acc, a) => acc + (a.kcal || 0), 0);
 
         let totKcal = 0, totP = 0, totG = 0, totC = 0, totZ = 0, totSat = 0, totSale = 0;
-        currentDayFoods.forEach(i => {
+        foods.forEach(i => {
             totKcal += (i.kcal || 0);
             totP += (i.p || 0);
             totG += (i.g || 0);
@@ -2301,24 +2761,25 @@
         });
 
         const mealsSummary = ['Colazione', 'Pranzo', 'Cena', 'Snack'].map(meal => {
-            const items = currentDayFoods.filter(f => f.meal === meal).map(f => f.nome).join(', ');
+            const items = foods.filter(f => f.meal === meal).map(f => escapeHtml(f.nome)).join(', ');
             return items ? `<strong>${meal}:</strong> ${items}` : null;
         }).filter(Boolean).join(' | ');
 
-        let actSummary = currentDayActivities.length > 0 ?
-            currentDayActivities.map(a => `${a.name} (${a.duration} min)`).join(', ') + ` [~${totBurned} kcal]` : 'Nessuna';
+        const actSummary = activities.length > 0 ?
+            activities.map(a => `${escapeHtml(a.name)} (${a.duration} min)`).join(', ') + ` [~${totBurned} kcal]` : 'Nessuna';
 
-        const comment = generateFeedback(totKcal, prof.targetKcal, currentWaterMl);
-        const targetDateStr = editingEntryDate ? editingEntryDate : new Date().toLocaleDateString('it-IT');
+        const comment = generateFeedback(totKcal, targetKcal, waterMl, activities, waterTarget);
 
-        const newEntry = {
-            id: Date.now() + Math.random(),
-            date: targetDateStr,
-            profileSex: currentSex,
-            hasActivity: currentDayActivities.length > 0,
+        return {
+            id: existingId || (Date.now() + Math.random()),
+            date: date,
+            profileSex: sex,
+            hasActivity: activities.length > 0,
             activityText: actSummary,
             foodSummary: mealsSummary,
-            waterMl: currentWaterMl,
+            waterMl: waterMl,
+            targetKcal: targetKcal,
+            waterTargetMl: waterTarget,
             totalKcal: totKcal,
             totalProt: totP.toFixed(1),
             totalFat: totG.toFixed(1),
@@ -2327,28 +2788,9 @@
             totalSaturi: totSat.toFixed(1),
             totalSale: totSale.toFixed(2),
             comment: comment,
-            rawFoods: [...currentDayFoods],
-            rawActivities: [...currentDayActivities]
+            rawFoods: [...foods],
+            rawActivities: [...activities]
         };
-
-        const existingIdx = appData.entries.findIndex(e => e.date === targetDateStr && e.profileSex === currentSex);
-
-        if (existingIdx !== -1) {
-            appData.entries[existingIdx] = newEntry;
-        } else {
-            appData.entries.unshift(newEntry);
-        }
-
-        saveDataToStorage();
-
-        if (editingEntryDate) {
-            restoreTodayDraft();
-        } else {
-            autoSaveDraft();
-        }
-
-        renderHistory();
-        toggleDrawer('historyDrawer');
     }
 
     function renderHistory() {
@@ -2360,7 +2802,14 @@
             return;
         }
 
-        historyList.innerHTML = entries.map((item, idx) => `
+        historyList.innerHTML = entries.map((item, idx) => {
+            // Con il profilo confermato non si modificano le giornate dell'altro profilo
+            const canEdit = !appData.lockedSex || item.profileSex === appData.lockedSex;
+            const editBtn = canEdit
+                ? `<button class="btn-edit" data-haptic="tap" onclick="editHistoryEntry(${idx})">✏️ Modifica</button>`
+                : '';
+
+            return `
             <div class="history-item">
                 <div class="history-header">
                     <span class="history-date">${item.date} (${item.profileSex === 'M' ? '👨 Uomo' : '👩 Donna'})</span>
@@ -2368,7 +2817,7 @@
                         <span class="history-tag ${item.hasActivity ? 'tag-good' : 'tag-neutral'}">
                             ${item.hasActivity ? 'Attività' : 'Riposo'}
                         </span>
-                        <button class="btn-edit" data-haptic="tap" onclick="editHistoryEntry(${idx})">✏️ Modifica</button>
+                        ${editBtn}
                         <button class="btn-danger-square" data-haptic="warn" onclick="deleteHistoryEntry(${idx})" title="Elimina">✕</button>
                     </div>
                 </div>
@@ -2388,22 +2837,16 @@
                     </div>
                 </details>
             </div>
-        `).join('');
+        `;
+        }).join('');
     }
 
     function editHistoryEntry(idx) {
         const item = appData.entries[idx];
         if (!item) return;
+        if (appData.lockedSex && item.profileSex !== appData.lockedSex) return;
 
-        if (confirm(`Vuoi ripristinare i dati della giornata del ${item.date} nel diario principale per modificarli?`)) {
-            if (!editingEntryDate) {
-                frozenTodayDraft = {
-                    currentDayFoods: [...currentDayFoods],
-                    currentDayActivities: [...currentDayActivities],
-                    currentWaterMl: currentWaterMl
-                };
-            }
-
+        if (confirm(`Vuoi aprire la giornata del ${item.date} nel diario principale per modificarla?\n\nLe modifiche vengono salvate automaticamente.`)) {
             currentSex = item.profileSex;
             appData.activeSex = currentSex;
             document.getElementById('sexSelect').value = currentSex;
@@ -2425,25 +2868,9 @@
         }
     }
 
+    // Esce dalla modifica di un giorno passato e torna al diario di oggi
     function cancelEditingHistory() {
-        restoreTodayDraft();
-    }
-
-    function restoreTodayDraft() {
-        editingEntryDate = null;
-        document.getElementById('editingBanner').style.display = 'none';
-
-        if (frozenTodayDraft) {
-            currentDayFoods = [...frozenTodayDraft.currentDayFoods];
-            currentDayActivities = [...frozenTodayDraft.currentDayActivities];
-            currentWaterMl = frozenTodayDraft.currentWaterMl;
-            frozenTodayDraft = null;
-            updateTodaySummary();
-            updateActivitiesSummary();
-            updateWaterDisplay();
-        } else {
-            loadDraftFromStorage();
-        }
+        loadDraftFromStorage();
     }
 
     function deleteHistoryEntry(idx) {
@@ -2451,9 +2878,11 @@
         if (!item) return;
 
         if (confirm(`Sei sicuro di voler eliminare definitivamente la registrazione del ${item.date}?`)) {
+            const wasEditing = editingEntryDate === item.date && item.profileSex === currentSex;
             appData.entries.splice(idx, 1);
             saveDataToStorage();
             renderHistory();
+            if (wasEditing) loadDraftFromStorage();
         }
     }
 
@@ -2462,6 +2891,7 @@
             appData.entries = [];
             saveDataToStorage();
             renderHistory();
+            if (editingEntryDate) loadDraftFromStorage();
         }
     }
 
@@ -2495,12 +2925,7 @@
 
         if (!inputName || !grams) return;
 
-        const match = FOOD_DATABASE.find(f => {
-            const marcaStr = String(f.marca || '').toLowerCase();
-            const nomeStr = String(f.nome || '').toLowerCase();
-            const label = (marcaStr && marcaStr !== 'web') ? `${nomeStr} (${marcaStr})` : nomeStr;
-            return label === inputName.toLowerCase() || nomeStr === inputName.toLowerCase();
-        });
+        const match = findFoodMatch(inputName);
 
         let finalName = inputName;
         if (match) {
@@ -2528,7 +2953,7 @@
 
         container.innerHTML = recipeDraftIngredients.map((ing, idx) => `
             <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding:2px 0; align-items:center;">
-                <span>${ing.nome} (${ing.grams}g)</span>
+                <span>${escapeHtml(ing.nome)} (${ing.grams}g)</span>
                 <button type="button" class="btn-danger-square" data-haptic="warn" onclick="recipeDraftIngredients.splice(${idx},1); renderRecipeDraft();">✕</button>
             </div>
         `).join('');
@@ -2565,11 +2990,11 @@
         container.innerHTML = appData.recipes.map(recipe => `
             <div class="meal-card">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <strong>${recipe.name}</strong>
+                    <strong>${escapeHtml(recipe.name)}</strong>
                     <button class="btn-danger-square" data-haptic="warn" onclick="deleteRecipe(${recipe.id})" title="Elimina">✕</button>
                 </div>
                 <div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">
-                    ${recipe.ingredients.map(i => `${i.nome} (${i.grams}g)`).join(', ')}
+                    ${recipe.ingredients.map(i => `${escapeHtml(i.nome)} (${i.grams}g)`).join(', ')}
                 </div>
             </div>
         `).join('');
@@ -2597,14 +3022,16 @@
 
         if (!isNaN(idx) && appData.recipes[idx]) {
             const recipe = appData.recipes[idx];
-            recipe.ingredients.forEach(ing => {
-                const match = FOOD_DATABASE.find(f => {
-                    const marcaStr = String(f.marca || '').toLowerCase();
-                    const nomeStr = String(f.nome || '').toLowerCase();
-                    const label = (marcaStr && marcaStr !== 'web') ? `${nomeStr} (${marcaStr})` : nomeStr;
-                    return label === ing.nome.toLowerCase() || nomeStr === ing.nome.toLowerCase();
-                });
 
+            // Avviso se alcuni ingredienti non sono più presenti nel database
+            const resolved = recipe.ingredients.map(ing => ({ ing: ing, match: findFoodMatch(ing.nome) }));
+            const missing = resolved.filter(r => !r.match).map(r => r.ing.nome);
+            if (missing.length > 0) {
+                const proceed = confirm(`⚠️ Questi ingredienti non sono presenti nel database e verrebbero inseriti con 0 kcal:\n\n${missing.join(', ')}\n\nOK = inserisci comunque il pasto\nAnnulla = non inserire nulla`);
+                if (!proceed) return;
+            }
+
+            resolved.forEach(({ ing, match }) => {
                 let kcal = 0, p = 0, g = 0, c = 0, zuccheri = 0, saturi = 0, sale = 0;
                 if (match) {
                     const factor = ing.grams / 100;
@@ -2634,7 +3061,8 @@
     function exportBackup() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
             appData: appData,
-            customFoods: localStorage.getItem('customFoodsDatabase')
+            customFoods: localStorage.getItem('customFoodsDatabase'),
+            personalFoods: localStorage.getItem('personalFoodsDatabase')
         }));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
@@ -2653,18 +3081,23 @@
             try {
                 const parsed = JSON.parse(e.target.result);
                 if (parsed.appData) {
-                    appData = parsed.appData;
+                    appData = normalizeAppData(parsed.appData);
                     saveDataToStorage();
                 }
-                if (parsed.customFoods) {
-                    localStorage.setItem('customFoodsDatabase', parsed.customFoods);
-                    FOOD_DATABASE = [...BASE_FOOD_DATABASE, ...JSON.parse(parsed.customFoods)];
-                }
+
+                const excelBackup = safeParseArray(parsed.customFoods);
+                if (excelBackup) localStorage.setItem('customFoodsDatabase', JSON.stringify(excelBackup));
+                const personalBackup = safeParseArray(parsed.personalFoods);
+                if (personalBackup) localStorage.setItem('personalFoodsDatabase', JSON.stringify(personalBackup));
+                loadFoodStorage();
+
                 alert("✅ Backup ripristinato con successo!");
-                currentSex = appData.activeSex || 'M';
+                currentSex = appData.lockedSex || appData.activeSex || 'M';
+                appData.activeSex = currentSex;
                 document.getElementById('sexSelect').value = currentSex;
                 document.getElementById('userNameInput').value = appData.userName || '';
                 loadProfileUI();
+                loadDraftFromStorage();
                 renderHistory();
                 renderSavedRecipes();
                 showWelcomePopUp();
@@ -2690,14 +3123,13 @@
             return;
         }
 
+        // Gli alimenti personali restano solo su questo telefono, separati da quelli dell'Excel
         const newFood = { marca: 'Personalizzato', nome: name, kcal: kcal, c: c, g: g, p: p, zuccheri: zuccheri, saturi: saturi, sale: sale, porzione_g: 100 };
-        FOOD_DATABASE.push(newFood);
+        personalFoods.push(newFood);
+        localStorage.setItem('personalFoodsDatabase', JSON.stringify(personalFoods));
+        rebuildFoodDatabase();
 
-        const customFoods = JSON.parse(localStorage.getItem('customFoodsDatabase') || '[]');
-        customFoods.push(newFood);
-        localStorage.setItem('customFoodsDatabase', JSON.stringify(customFoods));
-
-        alert(`✅ Alimento salvato! Se hai modificato il file centrale, premi "Sincronizza Alimenti" per aggiornare la lista.`);
+        alert(`✅ Alimento salvato su questo telefono!`);
 
         document.getElementById('newFoodName').value = '';
         document.getElementById('newFoodKcal').value = '';
