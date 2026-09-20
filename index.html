@@ -671,9 +671,36 @@
             animation: hapticPulse 0.16s ease-out;
         }
 
+        /* ===== MESSAGGIO BREVE (TOAST) ===== */
+        .toast {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            transform: translateX(-50%) translateY(20px);
+            background: #1e293b;
+            color: #ffffff;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            z-index: 3000;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
         @media (prefers-reduced-motion: reduce) {
             .progress-fill { transition: none; }
             .haptic-pulse { animation: none; }
+            .toast { transition: none; }
         }
     </style>
 </head>
@@ -952,6 +979,9 @@
     </div>
 
 </div>
+
+<!-- MESSAGGIO BREVE (usato dagli shortcut) -->
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <!-- DRAWER 1: PROFILO & NOME & PESO -->
 <div id="profileDrawer" class="drawer-overlay" onclick="closeDrawerOnBg(event, 'profileDrawer')">
@@ -1497,6 +1527,9 @@
         renderSavedRecipes();
         showWelcomePopUp();
 
+        // Azione richiesta da uno shortcut della schermata Home (?action=...)
+        handleShortcutAction();
+
         // Cambio giorno: controllo a mezzanotte, ogni 30 secondi e al ritorno nell'app
         scheduleMidnightCheck();
         setInterval(checkDayRollover, 30000);
@@ -1528,6 +1561,51 @@
             }
         });
     };
+
+    /* ===== MESSAGGIO BREVE ===== */
+    let toastTimer = null;
+
+    function showToast(text) {
+        const el = document.getElementById('toast');
+        if (!el) return;
+        el.textContent = text;
+        el.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+    }
+
+    /* ===== SHORTCUT DELLA SCHERMATA HOME (parametro ?action=) ===== */
+    // add_water: aggiunge 250 ml di acqua a oggi. weight: apre il Profilo sul campo del peso.
+    function handleShortcutAction() {
+        let action = null;
+        try {
+            action = new URLSearchParams(window.location.search).get('action');
+        } catch (e) {
+            action = null;
+        }
+        if (!action) return;
+
+        // Ripulisce il link: un ricaricamento della pagina non ripete l'azione
+        try {
+            window.history.replaceState(null, '', window.location.pathname);
+        } catch (e) {}
+
+        if (action === 'add_water') {
+            addWater(250);
+            haptic('success');
+            showToast(`💧 +250 ml aggiunti (${currentWaterMl} / ${waterTargetMl} ml)`);
+        } else if (action === 'weight') {
+            const drawer = document.getElementById('profileDrawer');
+            if (drawer.style.display !== 'flex') toggleDrawer('profileDrawer');
+            setTimeout(function() {
+                const input = document.getElementById('currentWeightInput');
+                if (input) {
+                    input.scrollIntoView({ block: 'center' });
+                    input.focus();
+                }
+            }, 350);
+        }
+    }
 
     function updateUserName() {
         appData.userName = document.getElementById('userNameInput').value.trim();
