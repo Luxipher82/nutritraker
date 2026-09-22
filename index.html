@@ -137,6 +137,204 @@
             color: var(--primary);
         }
 
+        /* ===== RICERCA ALIMENTI A TUTTA PAGINA ===== */
+        .food-search-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 3500;
+            background: var(--bg-color);
+            display: none;
+        }
+
+        .food-search-overlay.open {
+            display: block;
+        }
+
+        .food-search-page {
+            width: 100%;
+            max-width: 720px;
+            height: 100%;
+            margin: 0 auto;
+            box-sizing: border-box;
+            padding: 12px;
+            overflow-y: auto;
+        }
+
+        .food-search-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 0 10px;
+            position: sticky;
+            top: 0;
+            background: var(--bg-color);
+            z-index: 2;
+        }
+
+        .food-search-header h3 {
+            margin: 0;
+            font-size: 1.08rem;
+        }
+
+        .food-search-subtitle {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            margin-top: 2px;
+        }
+
+        .food-search-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0 12px;
+            margin-bottom: 9px;
+        }
+
+        .food-search-input-wrap span {
+            font-size: 1rem;
+            opacity: 0.75;
+        }
+
+        .food-search-input-wrap input {
+            border: 0;
+            padding: 12px 0;
+            background: transparent;
+            flex: 1;
+            width: auto;
+        }
+
+        .food-search-input-wrap input:focus {
+            border: 0;
+        }
+
+        .food-filter-bar {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .food-filter {
+            width: 100%;
+            padding: 8px 5px;
+            font-size: 0.74rem;
+            background: var(--card-bg);
+            color: var(--text);
+            border: 1px solid var(--border);
+            white-space: nowrap;
+        }
+
+        .food-filter.active {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .food-search-count {
+            color: var(--text-muted);
+            font-size: 0.73rem;
+            margin: 6px 2px;
+        }
+
+        .food-search-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding-bottom: 20px;
+        }
+
+        .food-search-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 9px 10px;
+        }
+
+        .food-search-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .food-search-name {
+            font-size: 0.84rem;
+            font-weight: 700;
+            line-height: 1.25;
+            word-break: break-word;
+        }
+
+        .food-search-meta {
+            font-size: 0.71rem;
+            color: var(--text-muted);
+            margin-top: 3px;
+            line-height: 1.35;
+        }
+
+        .food-source-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            padding: 2px 6px;
+            border-radius: 999px;
+            font-size: 0.64rem;
+            font-weight: 700;
+            margin-left: 4px;
+            vertical-align: middle;
+        }
+
+        .food-source-badge.verified {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+
+        .food-source-badge.added {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .food-favorite-btn {
+            width: 34px;
+            min-width: 34px;
+            height: 34px;
+            padding: 0;
+            border-radius: 50%;
+            background: var(--bg-color);
+            color: #94a3b8;
+            border: 1px solid var(--border);
+            font-size: 1rem;
+        }
+
+        .food-favorite-btn.is-favorite {
+            color: #f59e0b;
+        }
+
+        .food-empty {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            padding: 30px 12px;
+        }
+
+        .food-search-select-btn {
+            width: auto;
+            min-width: 72px;
+            padding: 7px 9px;
+            font-size: 0.72rem;
+        }
+
+        @media (max-width: 430px) {
+            .food-filter-bar {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+
         button {
             background-color: var(--primary);
             color: white;
@@ -837,6 +1035,10 @@
                 <span class="icon">🍲</span>
                 <span>Pasti</span>
             </button>
+            <button class="icon-btn" data-haptic="tap" onclick="openFoodSearch()" title="Cerca alimenti">
+                <span class="icon">🔎</span>
+                <span>Cerca</span>
+            </button>
             <button class="icon-btn" data-haptic="tap" onclick="toggleDrawer('historyDrawer')" title="Storico">
                 <span class="icon">📋</span>
                 <span>Storico</span>
@@ -1089,6 +1291,36 @@
         </div>
     </div>
 
+</div>
+
+
+<!-- RICERCA ALIMENTI A TUTTA PAGINA -->
+<div id="foodSearchOverlay" class="food-search-overlay" aria-hidden="true">
+    <div class="food-search-page">
+        <div class="food-search-header">
+            <div>
+                <h3>🔎 Cerca alimento</h3>
+                <div class="food-search-subtitle">Database verificato + alimenti aggiunti da te</div>
+            </div>
+            <button class="close-btn" data-haptic="tap" onclick="closeFoodSearch()" aria-label="Chiudi">✕</button>
+        </div>
+
+        <div class="food-search-input-wrap">
+            <span>🔎</span>
+            <input id="foodSearchInput" type="search" placeholder="Cerca per alimento o marca..." autocomplete="off"
+                   oninput="renderFoodSearchResults()">
+        </div>
+
+        <div class="food-filter-bar" role="tablist" aria-label="Filtro alimenti">
+            <button id="foodFilter-all" class="food-filter active" data-haptic="tap" onclick="setFoodSearchFilter('all')">Tutti</button>
+            <button id="foodFilter-verified" class="food-filter" data-haptic="tap" onclick="setFoodSearchFilter('verified')">✓ Verificati</button>
+            <button id="foodFilter-added" class="food-filter" data-haptic="tap" onclick="setFoodSearchFilter('added')">＋ Aggiunti</button>
+            <button id="foodFilter-favorite" class="food-filter" data-haptic="tap" onclick="setFoodSearchFilter('favorite')">★ Preferiti</button>
+        </div>
+
+        <div id="foodSearchCount" class="food-search-count"></div>
+        <div id="foodSearchResults" class="food-search-list"></div>
+    </div>
 </div>
 
 <!-- MESSAGGIO BREVE (successi e shortcut) -->
@@ -1389,6 +1621,8 @@
     let recipeDraftIngredients = [];
     let todayTotals = { p: 0, c: 0, g: 0 };
     let searchMatchesCache = {};
+    let foodSearchFilter = 'all';
+    let favoriteFoodKeys = safeParseArray(localStorage.getItem('favoriteFoodsDatabase')) || [];
 
     let currentSex = 'M';
     let editingEntryDate = null;
@@ -1516,7 +1750,158 @@
 
     /* ===== ALIMENTI: EXCEL (fonte principale) + PERSONALI (solo su questo telefono) ===== */
     function rebuildFoodDatabase() {
+        // TRUE = alimento proveniente dall'Excel ufficiale/database.
+        // FALSE = alimento creato manualmente dall'utente.
+        excelFoods = excelFoods.map(f => ({ ...f, verified: true }));
+        personalFoods = personalFoods.map(f => ({ ...f, verified: false }));
         FOOD_DATABASE = [...excelFoods, ...personalFoods];
+    }
+
+    function foodKey(food) {
+        const marca = String(food && food.marca || '').trim().toLowerCase();
+        const nome = String(food && food.nome || '').trim().toLowerCase();
+        return `${marca}::${nome}`;
+    }
+
+    function isFoodFavorite(food) {
+        return favoriteFoodKeys.includes(foodKey(food));
+    }
+
+    function toggleFoodFavoriteByIndex(index) {
+        const food = FOOD_DATABASE[index];
+        if (!food) return;
+
+        const key = foodKey(food);
+        const pos = favoriteFoodKeys.indexOf(key);
+        if (pos >= 0) favoriteFoodKeys.splice(pos, 1);
+        else favoriteFoodKeys.push(key);
+
+        localStorage.setItem('favoriteFoodsDatabase', JSON.stringify(favoriteFoodKeys));
+        renderFoodSearchResults();
+    }
+
+    function getFoodLabel(food) {
+        const marca = food && food.marca ? String(food.marca).trim() : '';
+        const nome = food && food.nome ? String(food.nome).trim() : 'Alimento';
+        return (marca && marca.toLowerCase() !== 'web') ? `${nome} (${marca})` : nome;
+    }
+
+    function foodSourceBadge(food) {
+        return food && food.verified
+            ? '<span class="food-source-badge verified">✓ Verificato</span>'
+            : '<span class="food-source-badge added">＋ Aggiunto</span>';
+    }
+
+    function openFoodSearch() {
+        const overlay = document.getElementById('foodSearchOverlay');
+        if (!overlay) return;
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        const input = document.getElementById('foodSearchInput');
+        if (input) {
+            input.value = '';
+            setTimeout(() => input.focus(), 80);
+        }
+        setFoodSearchFilter(foodSearchFilter);
+    }
+
+    function closeFoodSearch() {
+        const overlay = document.getElementById('foodSearchOverlay');
+        if (!overlay) return;
+        overlay.classList.remove('open');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+    }
+
+    function setFoodSearchFilter(filter) {
+        foodSearchFilter = ['all', 'verified', 'added', 'favorite'].includes(filter) ? filter : 'all';
+        document.querySelectorAll('.food-filter').forEach(btn => btn.classList.remove('active'));
+        const active = document.getElementById(`foodFilter-${foodSearchFilter}`);
+        if (active) active.classList.add('active');
+        renderFoodSearchResults();
+    }
+
+    function renderFoodSearchResults() {
+        const input = document.getElementById('foodSearchInput');
+        const list = document.getElementById('foodSearchResults');
+        const count = document.getElementById('foodSearchCount');
+        if (!input || !list || !count) return;
+
+        const query = input.value.toLowerCase().trim();
+
+        let matches = FOOD_DATABASE.filter(food => {
+            const text = `${food.marca || ''} ${food.nome || ''}`.toLowerCase();
+            const queryOk = !query || text.includes(query);
+            const filterOk =
+                foodSearchFilter === 'all' ||
+                (foodSearchFilter === 'verified' && food.verified === true) ||
+                (foodSearchFilter === 'added' && food.verified === false) ||
+                (foodSearchFilter === 'favorite' && isFoodFavorite(food));
+            return queryOk && filterOk;
+        });
+
+        // Senza ricerca mostra comunque una lista utile, ma limitata per evitare una pagina enorme.
+        const MAX_RESULTS = 200;
+        const shown = matches.slice(0, MAX_RESULTS);
+
+        count.textContent = `${matches.length} alimento${matches.length === 1 ? '' : 'i'}`
+            + (matches.length > MAX_RESULTS ? ` · mostrati i primi ${MAX_RESULTS}` : '');
+
+        if (shown.length === 0) {
+            list.innerHTML = '<div class="food-empty">Nessun alimento corrispondente al filtro o alla ricerca.</div>';
+            return;
+        }
+
+        list.innerHTML = shown.map(food => {
+            const index = FOOD_DATABASE.indexOf(food);
+            const favorite = isFoodFavorite(food);
+            const kcal = Number(food.kcal || 0);
+            const p = Number(food.p || 0).toFixed(1);
+            const g = Number(food.g || 0).toFixed(1);
+            const c = Number(food.c || 0).toFixed(1);
+
+            return `
+                <div class="food-search-item">
+                    <button type="button" class="food-favorite-btn ${favorite ? 'is-favorite' : ''}"
+                            data-haptic="tap" onclick="toggleFoodFavoriteByIndex(${index})"
+                            title="${favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}">
+                        ${favorite ? '★' : '☆'}
+                    </button>
+                    <div class="food-search-main">
+                        <div class="food-search-name">
+                            ${escapeHtml(getFoodLabel(food))} ${foodSourceBadge(food)}
+                        </div>
+                        <div class="food-search-meta">
+                            ${kcal} kcal · P ${p}g · G ${g}g · C ${c}g · valori per 100g
+                        </div>
+                    </div>
+                    <button type="button" class="food-search-select-btn"
+                            data-haptic="tap" onclick="useFoodFromFullSearch(${index})">
+                        Usa
+                    </button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function useFoodFromFullSearch(index) {
+        const food = FOOD_DATABASE[index];
+        if (!food) return;
+
+        // La ricerca generale non sa in quale pasto l'utente voglia inserirlo.
+        // Chiude la schermata e precompila il primo campo alimento vuoto, altrimenti Colazione.
+        const meals = ['Colazione', 'Pranzo', 'Cena', 'Snack'];
+        const target = meals.find(meal => {
+            const el = document.getElementById(`foodInput-${meal}`);
+            return el && !el.value.trim();
+        }) || 'Colazione';
+
+        selectFoodForMeal(target, getFoodLabel(food), food.porzione_g || 100);
+        closeFoodSearch();
+
+        const input = document.getElementById(`foodInput-${target}`);
+        if (input) input.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     function loadFoodStorage() {
@@ -1534,8 +1919,8 @@
             localStorage.setItem('personalFoodsDatabase', JSON.stringify(personal));
         }
 
-        excelFoods = excel;
-        personalFoods = personal;
+        excelFoods = excel.map(f => ({ ...f, verified: true }));
+        personalFoods = personal.map(f => ({ ...f, verified: false }));
         rebuildFoodDatabase();
     }
 
@@ -1575,6 +1960,13 @@
         if (entry.profileSex !== 'F' && entry.profileSex !== 'M') entry.profileSex = 'M';
         if (!Array.isArray(entry.rawFoods)) entry.rawFoods = [];
         if (!Array.isArray(entry.rawActivities)) entry.rawActivities = [];
+
+        // Migrazione: i valori nutrizionali già registrati NON vengono ricalcolati.
+        // Aggiungiamo solo la provenienza quando manca.
+        entry.rawFoods = entry.rawFoods.map(food => ({
+            ...food,
+            verified: typeof food.verified === 'boolean' ? food.verified : false
+        }));
         return entry;
     }
 
@@ -1774,7 +2166,14 @@
             if (e.target === overlay && modalActive) closeAppModal(modalActive.config.dismissValue);
         });
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && modalActive) closeAppModal(modalActive.config.dismissValue);
+            if (e.key === 'Escape') {
+                const search = document.getElementById('foodSearchOverlay');
+                if (search && search.classList.contains('open')) {
+                    closeFoodSearch();
+                    return;
+                }
+                if (modalActive) closeAppModal(modalActive.config.dismissValue);
+            }
         });
     }
 
@@ -1974,6 +2373,7 @@
             const nomeStr = idxNome !== -1 ? String(row[idxNome] || '').trim() : '';
             if (nomeStr !== "") {
                 importedFoods.push({
+                    verified: true,
                     marca: idxMarca !== -1 ? String(row[idxMarca] || '').trim() : '',
                     nome: nomeStr,
                     kcal: parseVal(idxKcal),
@@ -2938,6 +3338,8 @@
                 id: Date.now() + Math.random(),
                 meal: meal,
                 nome: (marcaStr && marcaStr !== 'WEB' && marcaStr !== '') ? `${nomeStr} (${marcaStr})` : nomeStr,
+                sourceFoodKey: foodKey(match),
+                verified: match.verified === true,
                 grams: grams,
                 kcal: Math.round(rawKcal * factor),
                 p: Math.round(rawP * factor * 10) / 10,
@@ -2957,6 +3359,8 @@
                 id: Date.now() + Math.random(),
                 meal: meal,
                 nome: inputName,
+                sourceFoodKey: `unknown::${inputName.toLowerCase()}`,
+                verified: false,
                 grams: grams,
                 kcal: 0, p: 0, g: 0, c: 0, zuccheri: 0, saturi: 0, sale: 0
             });
@@ -3009,7 +3413,8 @@
                 const li = document.createElement('li');
                 li.innerHTML = `
                     <div style="display: flex; flex-direction: column;">
-                        <span>${escapeHtml(item.nome)} (${item.grams}g) - <strong>${item.kcal} kcal</strong></span>
+                        <span>${escapeHtml(item.nome)} (${item.grams}g) - <strong>${item.kcal} kcal</strong>
+                            ${item.verified ? '<span class="food-source-badge verified">✓</span>' : '<span class="food-source-badge added">＋</span>'}</span>
                         <span class="food-macro-details">P: ${item.p}g | G: ${item.g}g | C: ${item.c}g</span>
                     </div>
                     <button type="button" class="btn-danger-square" data-haptic="warn" onclick="removeFood(${item.id})" title="Elimina">✕</button>
@@ -3381,6 +3786,8 @@
                     id: Date.now() + Math.random(),
                     meal: mealTarget,
                     nome: ing.nome,
+                    sourceFoodKey: match ? foodKey(match) : `unknown::${String(ing.nome).toLowerCase()}`,
+                    verified: match ? match.verified === true : false,
                     grams: ing.grams,
                     kcal: kcal, p: p, g: g, c: c,
                     zuccheri: zuccheri, saturi: saturi, sale: sale
@@ -3457,7 +3864,7 @@
         }
 
         // Gli alimenti personali restano solo su questo telefono, separati da quelli dell'Excel
-        const newFood = { marca: 'Personalizzato', nome: name, kcal: kcal, c: c, g: g, p: p, zuccheri: zuccheri, saturi: saturi, sale: sale, porzione_g: 100 };
+        const newFood = { verified: false, marca: 'Personalizzato', nome: name, kcal: kcal, c: c, g: g, p: p, zuccheri: zuccheri, saturi: saturi, sale: sale, porzione_g: 100 };
         personalFoods.push(newFood);
         localStorage.setItem('personalFoodsDatabase', JSON.stringify(personalFoods));
         rebuildFoodDatabase();
