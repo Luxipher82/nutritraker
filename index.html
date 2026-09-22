@@ -262,8 +262,38 @@
             min-width: 0;
         }
 
+        .food-search-brand {
+            font-size: 0.68rem;
+            color: var(--text-muted);
+            line-height: 1.2;
+            margin-bottom: 2px;
+            word-break: break-word;
+        }
+
+        .food-inline-verified {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 17px;
+            height: 17px;
+            margin-left: 4px;
+            border-radius: 50%;
+            background: #dbeafe;
+            color: #1d4ed8;
+            font-size: 0.68rem;
+            font-weight: 800;
+            vertical-align: 1px;
+        }
+
+        .food-inline-favorite {
+            margin-left: 4px;
+            color: #f59e0b;
+            font-size: 0.92rem;
+            vertical-align: 0;
+        }
+
         .food-search-name {
-            font-size: 0.84rem;
+            font-size: 0.88rem;
             font-weight: 700;
             line-height: 1.25;
             word-break: break-word;
@@ -1035,10 +1065,6 @@
                 <span class="icon">🍲</span>
                 <span>Pasti</span>
             </button>
-            <button class="icon-btn" data-haptic="tap" onclick="openFoodSearch()" title="Cerca alimenti">
-                <span class="icon">🔎</span>
-                <span>Cerca</span>
-            </button>
             <button class="icon-btn" data-haptic="tap" onclick="toggleDrawer('historyDrawer')" title="Storico">
                 <span class="icon">📋</span>
                 <span>Storico</span>
@@ -1146,7 +1172,7 @@
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Colazione" placeholder="Cerca cibo..." oninput="searchFood('Colazione')" autocomplete="off">
+                    <input type="text" id="foodInput-Colazione" placeholder="Cerca cibo..." onclick="openFoodSearch('Colazione')" oninput="searchFood('Colazione')" autocomplete="off">
                     <div id="searchResults-Colazione" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Colazione" placeholder="g" style="flex: 1;">
@@ -1174,7 +1200,7 @@
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Pranzo" placeholder="Cerca cibo..." oninput="searchFood('Pranzo')" autocomplete="off">
+                    <input type="text" id="foodInput-Pranzo" placeholder="Cerca cibo..." onclick="openFoodSearch('Pranzo')" oninput="searchFood('Pranzo')" autocomplete="off">
                     <div id="searchResults-Pranzo" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Pranzo" placeholder="g" style="flex: 1;">
@@ -1202,7 +1228,7 @@
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Cena" placeholder="Cerca cibo..." oninput="searchFood('Cena')" autocomplete="off">
+                    <input type="text" id="foodInput-Cena" placeholder="Cerca cibo..." onclick="openFoodSearch('Cena')" oninput="searchFood('Cena')" autocomplete="off">
                     <div id="searchResults-Cena" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Cena" placeholder="g" style="flex: 1;">
@@ -1230,7 +1256,7 @@
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Snack" placeholder="Cerca cibo..." oninput="searchFood('Snack')" autocomplete="off">
+                    <input type="text" id="foodInput-Snack" placeholder="Cerca cibo..." onclick="openFoodSearch('Snack')" oninput="searchFood('Snack')" autocomplete="off">
                     <div id="searchResults-Snack" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Snack" placeholder="g" style="flex: 1;">
@@ -1294,28 +1320,34 @@
 </div>
 
 
-<!-- RICERCA ALIMENTI A TUTTA PAGINA -->
+<!-- RICERCA ALIMENTI A TUTTA PAGINA: si apre toccando "Cerca cibo..." in un pasto -->
 <div id="foodSearchOverlay" class="food-search-overlay" aria-hidden="true">
     <div class="food-search-page">
         <div class="food-search-header">
             <div>
                 <h3>🔎 Cerca alimento</h3>
-                <div class="food-search-subtitle">Database verificato + alimenti aggiunti da te</div>
+                <div class="food-search-subtitle">Seleziona un alimento per inserirlo nel pasto</div>
             </div>
-            <button class="close-btn" data-haptic="tap" onclick="closeFoodSearch()" aria-label="Chiudi">✕</button>
+            <button type="button" class="close-btn" data-haptic="tap" onclick="closeFoodSearch()">✕</button>
         </div>
 
         <div class="food-search-input-wrap">
             <span>🔎</span>
-            <input id="foodSearchInput" type="search" placeholder="Cerca per alimento o marca..." autocomplete="off"
+            <input id="foodSearchInput" type="search"
+                   placeholder="Cerca per marca o alimento..."
+                   autocomplete="off"
                    oninput="renderFoodSearchResults()">
         </div>
 
-        <div class="food-filter-bar" role="tablist" aria-label="Filtro alimenti">
-            <button id="foodFilter-all" class="food-filter active" data-haptic="tap" onclick="setFoodSearchFilter('all')">Tutti</button>
-            <button id="foodFilter-verified" class="food-filter" data-haptic="tap" onclick="setFoodSearchFilter('verified')">✓ Verificati</button>
-            <button id="foodFilter-added" class="food-filter" data-haptic="tap" onclick="setFoodSearchFilter('added')">＋ Aggiunti</button>
-            <button id="foodFilter-favorite" class="food-filter" data-haptic="tap" onclick="setFoodSearchFilter('favorite')">★ Preferiti</button>
+        <div class="food-filter-bar">
+            <button type="button" id="foodFilter-all" class="food-filter active"
+                    data-haptic="tap" onclick="setFoodSearchFilter('all')">Tutti</button>
+            <button type="button" id="foodFilter-verified" class="food-filter"
+                    data-haptic="tap" onclick="setFoodSearchFilter('verified')">✓ Verificati</button>
+            <button type="button" id="foodFilter-added" class="food-filter"
+                    data-haptic="tap" onclick="setFoodSearchFilter('added')">＋ Aggiunti</button>
+            <button type="button" id="foodFilter-favorite" class="food-filter"
+                    data-haptic="tap" onclick="setFoodSearchFilter('favorite')">★ Preferiti</button>
         </div>
 
         <div id="foodSearchCount" class="food-search-count"></div>
@@ -1622,6 +1654,7 @@
     let todayTotals = { p: 0, c: 0, g: 0 };
     let searchMatchesCache = {};
     let foodSearchFilter = 'all';
+    let foodSearchTargetMeal = null;
     let favoriteFoodKeys = safeParseArray(localStorage.getItem('favoriteFoodsDatabase')) || [];
 
     let currentSex = 'M';
@@ -1792,18 +1825,22 @@
             : '<span class="food-source-badge added">＋ Aggiunto</span>';
     }
 
-    function openFoodSearch() {
+    function openFoodSearch(mealTarget) {
         const overlay = document.getElementById('foodSearchOverlay');
         if (!overlay) return;
+
+        foodSearchTargetMeal = mealTarget || null;
+
         overlay.classList.add('open');
         overlay.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
+
         const input = document.getElementById('foodSearchInput');
         if (input) {
             input.value = '';
+            setFoodSearchFilter(foodSearchFilter);
             setTimeout(() => input.focus(), 80);
         }
-        setFoodSearchFilter(foodSearchFilter);
     }
 
     function closeFoodSearch() {
@@ -1812,6 +1849,7 @@
         overlay.classList.remove('open');
         overlay.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+        foodSearchTargetMeal = null;
     }
 
     function setFoodSearchFilter(filter) {
@@ -1856,28 +1894,40 @@
         list.innerHTML = shown.map(food => {
             const index = FOOD_DATABASE.indexOf(food);
             const favorite = isFoodFavorite(food);
+            const brand = food.marca && String(food.marca).trim() && String(food.marca).trim().toLowerCase() !== 'web'
+                ? String(food.marca).trim()
+                : '—';
+            const name = food.nome ? String(food.nome).trim() : 'Alimento';
             const kcal = Number(food.kcal || 0);
             const p = Number(food.p || 0).toFixed(1);
             const g = Number(food.g || 0).toFixed(1);
             const c = Number(food.c || 0).toFixed(1);
 
             return `
-                <div class="food-search-item">
+                <div class="food-search-item" onclick="useFoodFromFullSearch(${index})">
+                    <div class="food-search-main">
+                        <div class="food-search-brand">${escapeHtml(brand)}</div>
+                        <div class="food-search-name">
+                            ${escapeHtml(name)}
+                            ${food.verified ? '<span class="food-inline-verified" title="Alimento verificato">✓</span>' : ''}
+                            ${favorite ? '<span class="food-inline-favorite" title="Preferito">★</span>' : ''}
+                        </div>
+                        <div class="food-search-meta">
+                            <span><strong>${kcal}</strong> kcal</span>
+                            <span><strong>C</strong> ${c}g</span>
+                            <span><strong>G</strong> ${g}g</span>
+                            <span><strong>P</strong> ${p}g</span>
+                        </div>
+                    </div>
                     <button type="button" class="food-favorite-btn ${favorite ? 'is-favorite' : ''}"
-                            data-haptic="tap" onclick="toggleFoodFavoriteByIndex(${index})"
+                            data-haptic="tap"
+                            onclick="event.stopPropagation(); toggleFoodFavoriteByIndex(${index})"
                             title="${favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}">
                         ${favorite ? '★' : '☆'}
                     </button>
-                    <div class="food-search-main">
-                        <div class="food-search-name">
-                            ${escapeHtml(getFoodLabel(food))} ${foodSourceBadge(food)}
-                        </div>
-                        <div class="food-search-meta">
-                            ${kcal} kcal · P ${p}g · G ${g}g · C ${c}g · valori per 100g
-                        </div>
-                    </div>
                     <button type="button" class="food-search-select-btn"
-                            data-haptic="tap" onclick="useFoodFromFullSearch(${index})">
+                            data-haptic="tap"
+                            onclick="event.stopPropagation(); useFoodFromFullSearch(${index})">
                         Usa
                     </button>
                 </div>
@@ -1891,17 +1941,19 @@
 
         // La ricerca generale non sa in quale pasto l'utente voglia inserirlo.
         // Chiude la schermata e precompila il primo campo alimento vuoto, altrimenti Colazione.
-        const meals = ['Colazione', 'Pranzo', 'Cena', 'Snack'];
-        const target = meals.find(meal => {
-            const el = document.getElementById(`foodInput-${meal}`);
-            return el && !el.value.trim();
-        }) || 'Colazione';
+        const target = foodSearchTargetMeal || 'Colazione';
 
         selectFoodForMeal(target, getFoodLabel(food), food.porzione_g || 100);
         closeFoodSearch();
 
         const input = document.getElementById(`foodInput-${target}`);
-        if (input) input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        if (input) {
+            input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setTimeout(() => {
+                const grams = document.getElementById(`foodGrams-${target}`);
+                if (grams) grams.focus();
+            }, 100);
+        }
     }
 
     function loadFoodStorage() {
