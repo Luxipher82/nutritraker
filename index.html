@@ -1041,6 +1041,31 @@
             .toast { transition: none; }
             .modal-box { animation: none; }
         }
+
+        /* ===== RICETTE E PASTI COMPLETI ===== */
+        .recipe-manager-tabs { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+        .recipe-manager-tab { background:var(--bg-color); color:var(--text); border:1px solid var(--border); }
+        .recipe-manager-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+        .manager-card { background:var(--bg-color); border:1px solid var(--border); padding:10px; border-radius:10px; }
+        .recipe-builder-list { margin:7px 0; }
+        .recipe-builder-row { display:flex; align-items:center; gap:7px; padding:7px 0; border-bottom:1px dashed var(--border); font-size:.8rem; }
+        .recipe-builder-row:last-child { border-bottom:0; }
+        .recipe-builder-main { flex:1; min-width:0; }
+        .recipe-builder-main strong { display:block; word-break:break-word; }
+        .recipe-builder-main small { color:var(--text-muted); }
+        .recipe-total-box { background:var(--card-bg); border:1px solid var(--border); border-radius:8px; padding:8px; margin:8px 0; font-size:.78rem; line-height:1.45; }
+        .recipe-total-box strong { color:var(--primary); }
+        .saved-template-card { background:var(--card-bg); border:1px solid var(--border); border-radius:10px; padding:9px; margin:7px 0; }
+        .saved-template-head { display:flex; justify-content:space-between; align-items:center; gap:7px; }
+        .saved-template-actions { display:flex; gap:5px; flex-shrink:0; }
+        .template-macros { color:var(--text-muted); font-size:.74rem; margin-top:4px; }
+        .template-detail { color:var(--text-muted); font-size:.74rem; margin-top:5px; line-height:1.35; }
+        .recipe-add-row { align-items:flex-end; }
+        .search-resource-tabs { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-bottom:8px; }
+        .search-resource-tab { background:var(--card-bg); color:var(--text); border:1px solid var(--border); padding:8px 5px; font-size:.76rem; }
+        .search-resource-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+        .template-search-kind { font-size:.65rem; color:var(--primary); font-weight:700; text-transform:uppercase; margin-bottom:2px; }
+        .template-search-portion { font-size:.7rem; color:var(--text-muted); margin-top:2px; }
     </style>
 </head>
 <body class="theme-female">
@@ -1339,7 +1364,13 @@
                    oninput="renderFoodSearchResults()">
         </div>
 
-        <div class="food-filter-bar">
+        <div class="search-resource-tabs">
+            <button type="button" id="resourceTab-food" class="search-resource-tab active" onclick="setSearchResource('food')">🥕 Alimenti</button>
+            <button type="button" id="resourceTab-recipe" class="search-resource-tab" onclick="setSearchResource('recipe')">🍰 Ricette</button>
+            <button type="button" id="resourceTab-meal" class="search-resource-tab" onclick="setSearchResource('meal')">🍽️ Pasti</button>
+        </div>
+
+        <div class="food-filter-bar" id="foodFilterBar">
             <button type="button" id="foodFilter-all" class="food-filter active"
                     data-haptic="tap" onclick="setFoodSearchFilter('all')">Tutti</button>
             <button type="button" id="foodFilter-verified" class="food-filter"
@@ -1551,39 +1582,80 @@
     </div>
 </div>
 
-<!-- DRAWER 3: PASTI SALVATI -->
+<!-- DRAWER 3: RICETTE E PASTI COMPLETI -->
 <div id="recipesDrawer" class="drawer-overlay" onclick="closeDrawerOnBg(event, 'recipesDrawer')">
-    <div class="drawer-content">
+    <div class="drawer-content recipe-manager">
         <div class="drawer-header">
-            <h3>🍲 I Miei Pasti Salvati</h3>
+            <h3>🍲 Ricette e Pasti</h3>
             <button class="close-btn" data-haptic="tap" onclick="toggleDrawer('recipesDrawer')">✕</button>
         </div>
 
-        <div style="background: var(--bg-color); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
-            <h4 style="margin-bottom: 6px; color: var(--primary);">Crea Nuovo Pasto Salvato</h4>
-            <div class="form-group">
-                <label for="recipeNameInput">Nome Pasto</label>
-                <input type="text" id="recipeNameInput" placeholder="Es. Colazione Tipo">
-            </div>
-
-            <div id="recipeIngredientsList" style="margin: 6px 0;"></div>
-
-            <div class="row">
-                <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Recipe" placeholder="Cerca ingrediente..." oninput="searchFood('Recipe')" autocomplete="off">
-                    <div id="searchResults-Recipe" class="autocomplete-results"></div>
-                </div>
-                <input type="number" id="foodGrams-Recipe" placeholder="g" style="flex: 1;">
-                <button data-haptic="tap" onclick="addIngredientToRecipeDraft()" style="flex: 0.8;">+ Add</button>
-            </div>
-
-            <button data-haptic="success" onclick="saveNewRecipe()" style="width: 100%; margin-top: 8px; background-color: var(--success); padding: 8px;">Salva Pasto Pronto</button>
+        <div class="recipe-manager-tabs">
+            <button id="recipeManagerTab-recipes" class="recipe-manager-tab active" onclick="showRecipeManagerTab('recipes')">🍰 Ricette</button>
+            <button id="recipeManagerTab-meals" class="recipe-manager-tab" onclick="showRecipeManagerTab('meals')">🍽️ Pasti completi</button>
         </div>
 
-        <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
+        <section id="recipeManager-recipes">
+            <div class="manager-card">
+                <h4>➕ Crea nuova ricetta</h4>
+                <div class="form-group">
+                    <label for="recipeNameInput">Nome ricetta</label>
+                    <input type="text" id="recipeNameInput" placeholder="Es. Torta al cioccolato">
+                </div>
+                <div class="form-group">
+                    <label for="recipePortionsInput">Numero di porzioni</label>
+                    <input type="number" id="recipePortionsInput" min="1" step="1" value="1" placeholder="Es. 8">
+                </div>
+                <div id="recipeIngredientsList" class="recipe-builder-list"></div>
+                <div class="row recipe-add-row">
+                    <div style="flex:2; position:relative;">
+                        <input type="text" id="foodInput-Recipe" placeholder="Cerca ingrediente..." oninput="searchFood('Recipe')" autocomplete="off">
+                        <div id="searchResults-Recipe" class="autocomplete-results"></div>
+                    </div>
+                    <input type="number" id="foodGrams-Recipe" placeholder="g" style="flex:0.8;" min="0.1" step="0.1">
+                    <button type="button" onclick="addIngredientToRecipeDraft()" style="flex:0.7;">+ Add</button>
+                </div>
+                <div id="recipeDraftTotals" class="recipe-total-box"></div>
+                <div class="row">
+                    <button type="button" class="btn-secondary" onclick="clearRecipeDraft()">Svuota</button>
+                    <button type="button" onclick="saveNewRecipe()" style="background:var(--success);">Salva ricetta</button>
+                </div>
+            </div>
 
-        <h4>Elenco Pasti Pronti Salvati</h4>
-        <div id="savedRecipesList"></div>
+            <h4 style="margin-top:10px;">Ricette salvate</h4>
+            <div id="savedRecipesList"></div>
+        </section>
+
+        <section id="recipeManager-meals" style="display:none;">
+            <div class="manager-card">
+                <h4>➕ Crea nuovo pasto completo</h4>
+                <div class="form-group">
+                    <label for="compositeMealNameInput">Nome del pasto</label>
+                    <input type="text" id="compositeMealNameInput" placeholder="Es. Pranzo del lunedì">
+                </div>
+                <div id="compositeMealDraftList" class="recipe-builder-list"></div>
+                <div class="form-group">
+                    <label for="compositeMealRecipeSelect">Aggiungi una ricetta salvata</label>
+                    <div class="row">
+                        <select id="compositeMealRecipeSelect"></select>
+                        <select id="compositeMealPortionSelect" style="flex:0.65;">
+                            <option value="1">1/1</option>
+                            <option value="0.5">1/2</option>
+                            <option value="0.25">1/4</option>
+                        </select>
+                        <button type="button" onclick="addRecipeToCompositeDraft()" style="flex:0.65;">+ Add</button>
+                    </div>
+                </div>
+                <div id="compositeMealDraftTotals" class="recipe-total-box"></div>
+                <div class="row">
+                    <button type="button" class="btn-secondary" onclick="clearCompositeMealDraft()">Svuota</button>
+                    <button type="button" onclick="saveCompositeMeal()" style="background:var(--success);">Salva pasto</button>
+                </div>
+            </div>
+
+            <h4 style="margin-top:10px;">Pasti completi salvati</h4>
+            <div id="savedCompositeMealsList"></div>
+        </section>
     </div>
 </div>
 
@@ -1672,6 +1744,7 @@
             M: defaultProfile('M')
         },
         recipes: [],
+        compositeMeals: [],
         entries: []
     };
 
@@ -2033,7 +2106,10 @@
             profileEditing: false,
             profiles: { F: defaultProfile('F'), M: defaultProfile('M') },
             recipes: Array.isArray(src.recipes)
-                ? src.recipes.filter(r => r && typeof r === 'object' && Array.isArray(r.ingredients))
+                ? src.recipes.filter(r => r && typeof r === 'object' && Array.isArray(r.ingredients)).map(normalizeRecipe)
+                : [],
+            compositeMeals: Array.isArray(src.compositeMeals)
+                ? src.compositeMeals.filter(m => m && typeof m === 'object' && Array.isArray(m.items)).map(normalizeCompositeMeal)
                 : [],
             entries: Array.isArray(src.entries)
                 ? src.entries.filter(e => e && typeof e === 'object').map(normalizeEntry)
@@ -3709,146 +3785,220 @@
         localStorage.setItem('nutritionTrackerDataWeb', JSON.stringify(appData));
     }
 
-    // PASTI SALVATI
-    function addIngredientToRecipeDraft() {
-        const inputName = document.getElementById('foodInput-Recipe').value.trim();
-        let grams = parseFloat(document.getElementById('foodGrams-Recipe').value);
+    // ===== RICETTE E PASTI COMPLETI =====
+    let recipeDraftEditId = null;
+    let compositeMealDraft = [];
+    let searchResource = 'food';
 
-        if (!inputName || !grams) return;
+    function macroNumbers(obj) {
+        return {
+            kcal: Number(obj?.kcal || 0), p: Number(obj?.p || 0), g: Number(obj?.g || 0), c: Number(obj?.c || 0),
+            zuccheri: Number(obj?.zuccheri || 0), saturi: Number(obj?.saturi || 0), sale: Number(obj?.sale || 0)
+        };
+    }
 
-        const match = findFoodMatch(inputName);
-
-        let finalName = inputName;
-        if (match) {
-            const marcaStr = match.marca || '';
-            const nomeStr = match.nome || inputName;
-            finalName = (marcaStr && marcaStr !== 'WEB' && marcaStr !== '') ? `${nomeStr} (${marcaStr})` : nomeStr;
-        }
-
-        recipeDraftIngredients.push({
-            nome: finalName,
-            grams: grams
+    function calcRecipeTotals(recipe) {
+        const t = { kcal:0,p:0,g:0,c:0,zuccheri:0,saturi:0,sale:0 };
+        (recipe?.ingredients || []).forEach(ing => {
+            const m = macroNumbers(ing.snapshot || ing);
+            const f = Number(ing.grams || 0) / 100;
+            Object.keys(t).forEach(k => t[k] += m[k] * f);
         });
+        return t;
+    }
 
-        document.getElementById('foodInput-Recipe').value = '';
-        document.getElementById('foodGrams-Recipe').value = '';
+    function normalizeRecipe(r) {
+        const out = { ...r };
+        out.id = out.id || (Date.now() + Math.random());
+        out.name = String(out.name || 'Ricetta');
+        out.portions = Math.max(1, Number(out.portions || 1));
+        out.ingredients = Array.isArray(out.ingredients) ? out.ingredients.map(ing => {
+            let snap = ing.snapshot ? macroNumbers(ing.snapshot) : macroNumbers(ing);
+            let sourceKey = ing.sourceFoodKey || '';
+            /* Migrazione delle vecchie ricette: in precedenza salvavano solo nome e grammi.
+               Se possibile, recuperiamo ora i valori dall'alimento corrente e li congeliamo nella ricetta. */
+            if (!ing.snapshot && typeof findFoodMatch === 'function') {
+                const match = findFoodMatch(ing.nome);
+                if (match) { snap = macroNumbers(match); sourceKey = foodKey(match); }
+            }
+            return { ...ing, grams:Number(ing.grams || 0), snapshot:snap, sourceFoodKey:sourceKey };
+        }) : [];
+        out.totals = calcRecipeTotals(out);
+        return out;
+    }
+
+    function normalizeCompositeMeal(m) {
+        return {
+            ...m,
+            id: m.id || (Date.now() + Math.random()),
+            name: String(m.name || 'Pasto completo'),
+            items: Array.isArray(m.items) ? m.items.map(i => ({
+                recipeId:i.recipeId,
+                recipeName:String(i.recipeName || 'Ricetta'),
+                multiplier:[1,.5,.25].includes(Number(i.multiplier)) ? Number(i.multiplier) : 1,
+                snapshot:macroNumbers(i.snapshot || i)
+            })) : []
+        };
+    }
+
+    function recipePerPortion(recipe) {
+        const t = calcRecipeTotals(recipe);
+        const d = Math.max(1, Number(recipe.portions || 1));
+        const out={}; Object.keys(t).forEach(k=>out[k]=t[k]/d); return out;
+    }
+
+    function compositeTotals(meal) {
+        const t={kcal:0,p:0,g:0,c:0,zuccheri:0,saturi:0,sale:0};
+        (meal?.items || []).forEach(i => { const m=macroNumbers(i.snapshot); const f=Number(i.multiplier||1); Object.keys(t).forEach(k=>t[k]+=m[k]*f); });
+        return t;
+    }
+
+    function macroLine(t) {
+        return `${Math.round(t.kcal)} kcal · P ${t.p.toFixed(1)}g · G ${t.g.toFixed(1)}g · C ${t.c.toFixed(1)}g`;
+    }
+
+    function showRecipeManagerTab(tab) {
+        document.getElementById('recipeManager-recipes').style.display = tab === 'recipes' ? '' : 'none';
+        document.getElementById('recipeManager-meals').style.display = tab === 'meals' ? '' : 'none';
+        document.querySelectorAll('.recipe-manager-tab').forEach(b=>b.classList.remove('active'));
+        const b=document.getElementById(`recipeManagerTab-${tab}`); if(b) b.classList.add('active');
+        if(tab==='meals') { renderCompositeRecipeSelect(); renderCompositeMealDraft(); renderSavedCompositeMeals(); }
+    }
+
+    function addIngredientToRecipeDraft() {
+        const input = document.getElementById('foodInput-Recipe');
+        const gramsEl = document.getElementById('foodGrams-Recipe');
+        const inputName = input.value.trim(); const grams = Number(gramsEl.value);
+        if(!inputName || !grams || grams<=0) return;
+        const match = findFoodMatch(inputName);
+        if(!match) { appAlert(`L'alimento "${inputName}" non è presente nel database. Selezionalo dalla ricerca o aggiungilo prima.`); return; }
+        const snap = macroNumbers(match);
+        const ing = { nome:getFoodLabel(match), grams, sourceFoodKey:foodKey(match), verified:match.verified===true, snapshot:snap };
+        recipeDraftIngredients.push(ing);
+        input.value=''; gramsEl.value='';
         renderRecipeDraft();
     }
 
     function renderRecipeDraft() {
-        const container = document.getElementById('recipeIngredientsList');
-        if (recipeDraftIngredients.length === 0) {
-            container.innerHTML = '<span style="font-size:0.75rem; color:var(--text-muted);">Nessun ingrediente inserito.</span>';
-            return;
-        }
+        const c=document.getElementById('recipeIngredientsList'); if(!c) return;
+        if(!recipeDraftIngredients.length) c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);">Nessun ingrediente inserito.</div>';
+        else c.innerHTML=recipeDraftIngredients.map((ing,i)=>`<div class="recipe-builder-row"><div class="recipe-builder-main"><strong>${escapeHtml(ing.nome)}</strong><small>${ing.grams} g · ${macroLine(ing.snapshot)}</small></div><button type="button" class="btn-danger-square" onclick="recipeDraftIngredients.splice(${i},1);renderRecipeDraft();">✕</button></div>`).join('');
+        const portions=Math.max(1,Number(document.getElementById('recipePortionsInput')?.value||1));
+        const t=recipeDraftIngredients.reduce((a,ing)=>{const f=ing.grams/100,m=ing.snapshot;Object.keys(a).forEach(k=>a[k]+=m[k]*f);return a;},{kcal:0,p:0,g:0,c:0,zuccheri:0,saturi:0,sale:0});
+        const pp={};Object.keys(t).forEach(k=>pp[k]=t[k]/portions);
+        const box=document.getElementById('recipeDraftTotals');
+        if(box) box.innerHTML=`Totale ricetta: <strong>${macroLine(t)}</strong><br>Per ${portions} ${portions===1?'porzione':'porzioni'}: <strong>${macroLine(pp)}</strong>`;
+    }
 
-        container.innerHTML = recipeDraftIngredients.map((ing, idx) => `
-            <div style="display:flex; justify-content:space-between; font-size:0.8rem; padding:2px 0; align-items:center;">
-                <span>${escapeHtml(ing.nome)} (${ing.grams}g)</span>
-                <button type="button" class="btn-danger-square" data-haptic="warn" onclick="recipeDraftIngredients.splice(${idx},1); renderRecipeDraft();">✕</button>
-            </div>
-        `).join('');
+    function clearRecipeDraft() {
+        recipeDraftIngredients=[]; recipeDraftEditId=null;
+        document.getElementById('recipeNameInput').value=''; document.getElementById('recipePortionsInput').value='1';
+        renderRecipeDraft();
     }
 
     function saveNewRecipe() {
-        const name = document.getElementById('recipeNameInput').value.trim();
-        if (!name || recipeDraftIngredients.length === 0) {
-            appAlert("Inserisci un nome e almeno un ingrediente.");
-            return;
-        }
+        const name=document.getElementById('recipeNameInput').value.trim();
+        const portions=Math.max(1,Math.round(Number(document.getElementById('recipePortionsInput').value||1)));
+        if(!name || !recipeDraftIngredients.length) { appAlert('Inserisci nome, ingredienti e numero di porzioni.'); return; }
+        const id=recipeDraftEditId || (Date.now()+Math.random());
+        const recipe=normalizeRecipe({id,name,portions,ingredients:[...recipeDraftIngredients]});
+        const idx=appData.recipes.findIndex(r=>r.id===id);
+        if(idx>=0) appData.recipes[idx]=recipe; else appData.recipes.push(recipe);
+        saveDataToStorage(); clearRecipeDraft(); renderSavedRecipes(); renderCompositeRecipeSelect();
+        showToast(idx>=0 ? '✅ Ricetta aggiornata' : '✅ Ricetta salvata');
+    }
 
-        appData.recipes.push({
-            id: Date.now() + Math.random(),
-            name: name,
-            ingredients: [...recipeDraftIngredients]
-        });
-
-        saveDataToStorage();
-        recipeDraftIngredients = [];
-        document.getElementById('recipeNameInput').value = '';
-        renderRecipeDraft();
-        renderSavedRecipes();
-        showToast(`✅ Pasto "${name}" salvato!`);
+    function editRecipe(id) {
+        const r=appData.recipes.find(x=>String(x.id)===String(id)); if(!r)return;
+        recipeDraftEditId=r.id; document.getElementById('recipeNameInput').value=r.name; document.getElementById('recipePortionsInput').value=r.portions; recipeDraftIngredients=r.ingredients.map(x=>({...x,snapshot:macroNumbers(x.snapshot||x)})); renderRecipeDraft(); showRecipeManagerTab('recipes');
+        document.getElementById('recipeNameInput').scrollIntoView({behavior:'smooth',block:'center'});
     }
 
     function renderSavedRecipes() {
-        const container = document.getElementById('savedRecipesList');
-        if (appData.recipes.length === 0) {
-            container.innerHTML = '<span style="font-size:0.8rem; color:var(--text-muted);">Nessun pasto pronto salvato.</span>';
-            return;
-        }
-
-        container.innerHTML = appData.recipes.map(recipe => `
-            <div class="meal-card">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <strong>${escapeHtml(recipe.name)}</strong>
-                    <button class="btn-danger-square" data-haptic="warn" onclick="deleteRecipe(${recipe.id})" title="Elimina">✕</button>
-                </div>
-                <div style="font-size:0.78rem; color:var(--text-muted); margin-top:4px;">
-                    ${recipe.ingredients.map(i => `${escapeHtml(i.nome)} (${i.grams}g)`).join(', ')}
-                </div>
-            </div>
-        `).join('');
+        const c=document.getElementById('savedRecipesList'); if(!c)return;
+        if(!appData.recipes.length){c.innerHTML='<div style="font-size:.8rem;color:var(--text-muted);">Nessuna ricetta salvata.</div>';return;}
+        c.innerHTML=appData.recipes.map(r=>{const t=recipePerPortion(r);return `<div class="saved-template-card"><div class="saved-template-head"><strong>${escapeHtml(r.name)}</strong><div class="saved-template-actions"><button class="btn-edit" onclick="editRecipe(${r.id})">Modifica</button><button class="btn-danger-square" onclick="deleteRecipe(${r.id})">✕</button></div></div><div class="template-macros">1 porzione: ${macroLine(t)}</div><div class="template-detail">${r.portions} ${r.portions===1?'porzione':'porzioni'} · ${r.ingredients.map(i=>`${escapeHtml(i.nome)} ${i.grams}g`).join(', ')}</div></div>`}).join('');
     }
 
     function deleteRecipe(id) {
-        appData.recipes = appData.recipes.filter(r => r.id !== id);
-        saveDataToStorage();
-        renderSavedRecipes();
+        if(appData.compositeMeals.some(m=>m.items.some(i=>String(i.recipeId)===String(id)))) { appAlert('Questa ricetta è usata in almeno un pasto completo. Elimina o modifica prima il pasto completo.'); return; }
+        appData.recipes=appData.recipes.filter(r=>String(r.id)!==String(id)); saveDataToStorage(); renderSavedRecipes(); renderCompositeRecipeSelect();
     }
 
-    async function openRecipeSelector(mealTarget) {
-        if (appData.recipes.length === 0) {
-            appAlert("Non hai ancora salvato nessun pasto pronto. Puoi crearne uno dal menu '🍲 Pasti Salvati'.");
-            return;
-        }
-
-        // Lista da toccare al posto della richiesta del numero
-        const choices = appData.recipes.map(r => ({
-            label: r.name,
-            sub: `${r.ingredients.length} ${r.ingredients.length === 1 ? 'ingrediente' : 'ingredienti'}`
-        }));
-        const idx = await appChoose('Scegli il pasto salvato da inserire:', choices);
-
-        if (idx !== null && appData.recipes[idx]) {
-            const recipe = appData.recipes[idx];
-
-            // Avviso se alcuni ingredienti non sono più presenti nel database
-            const resolved = recipe.ingredients.map(ing => ({ ing: ing, match: findFoodMatch(ing.nome) }));
-            const missing = resolved.filter(r => !r.match).map(r => r.ing.nome);
-            if (missing.length > 0) {
-                const proceedMeal = await appConfirm(`⚠️ Questi ingredienti non sono presenti nel database e verrebbero inseriti con 0 kcal:\n\n${missing.join(', ')}\n\nVuoi inserire comunque il pasto?`, { confirmText: 'Inserisci comunque' });
-                if (!proceedMeal) return;
-            }
-
-            resolved.forEach(({ ing, match }) => {
-                let kcal = 0, p = 0, g = 0, c = 0, zuccheri = 0, saturi = 0, sale = 0;
-                if (match) {
-                    const factor = ing.grams / 100;
-                    kcal = Math.round((match.kcal || 0) * factor);
-                    p = Math.round((match.p || 0) * factor * 10) / 10;
-                    g = Math.round((match.g || 0) * factor * 10) / 10;
-                    c = Math.round((match.c || 0) * factor * 10) / 10;
-                    zuccheri = Math.round((match.zuccheri || 0) * factor * 10) / 10;
-                    saturi = Math.round((match.saturi || 0) * factor * 10) / 10;
-                    sale = Math.round((match.sale || 0) * factor * 100) / 100;
-                }
-
-                currentDayFoods.push({
-                    id: Date.now() + Math.random(),
-                    meal: mealTarget,
-                    nome: ing.nome,
-                    sourceFoodKey: match ? foodKey(match) : `unknown::${String(ing.nome).toLowerCase()}`,
-                    verified: match ? match.verified === true : false,
-                    grams: ing.grams,
-                    kcal: kcal, p: p, g: g, c: c,
-                    zuccheri: zuccheri, saturi: saturi, sale: sale
-                });
-            });
-            updateTodaySummary();
-            autoSaveDraft();
-        }
+    function renderCompositeRecipeSelect() {
+        const s=document.getElementById('compositeMealRecipeSelect'); if(!s)return;
+        if(!appData.recipes.length){s.innerHTML='<option value="">Nessuna ricetta salvata</option>';return;}
+        s.innerHTML=appData.recipes.map(r=>`<option value="${String(r.id).replace(/"/g,'&quot;')}">${escapeHtml(r.name)}</option>`).join('');
     }
+
+    function addRecipeToCompositeDraft() {
+        const id=document.getElementById('compositeMealRecipeSelect').value; const mult=Number(document.getElementById('compositeMealPortionSelect').value); const r=appData.recipes.find(x=>String(x.id)===String(id));
+        if(!r)return;
+        const pp=recipePerPortion(r);
+        compositeMealDraft.push({recipeId:r.id,recipeName:r.name,multiplier:mult,snapshot:pp}); renderCompositeMealDraft();
+    }
+
+    function renderCompositeMealDraft() {
+        const c=document.getElementById('compositeMealDraftList'); if(!c)return;
+        if(!compositeMealDraft.length)c.innerHTML='<div style="font-size:.75rem;color:var(--text-muted);">Nessuna ricetta aggiunta.</div>';
+        else c.innerHTML=compositeMealDraft.map((i,n)=>`<div class="recipe-builder-row"><div class="recipe-builder-main"><strong>${escapeHtml(i.recipeName)} × ${i.multiplier===1?'1/1':i.multiplier===.5?'1/2':'1/4'}</strong><small>${macroLine({...i.snapshot,kcal:i.snapshot.kcal*i.multiplier,p:i.snapshot.p*i.multiplier,g:i.snapshot.g*i.multiplier,c:i.snapshot.c*i.multiplier})}</small></div><button type="button" class="btn-danger-square" onclick="compositeMealDraft.splice(${n},1);renderCompositeMealDraft();">✕</button></div>`).join('');
+        const t=compositeTotals({items:compositeMealDraft}); const box=document.getElementById('compositeMealDraftTotals'); if(box)box.innerHTML=`Totale pasto completo: <strong>${macroLine(t)}</strong>`;
+    }
+
+    function clearCompositeMealDraft(){compositeMealDraft=[];document.getElementById('compositeMealNameInput').value='';renderCompositeMealDraft();}
+
+    function saveCompositeMeal(){
+        const name=document.getElementById('compositeMealNameInput').value.trim();
+        if(!name||!compositeMealDraft.length){appAlert('Inserisci il nome e almeno una ricetta.');return;}
+        appData.compositeMeals.push(normalizeCompositeMeal({id:Date.now()+Math.random(),name,items:[...compositeMealDraft]}));
+        saveDataToStorage();clearCompositeMealDraft();renderSavedCompositeMeals();showToast('✅ Pasto completo salvato');
+    }
+
+    function deleteCompositeMeal(id){appData.compositeMeals=appData.compositeMeals.filter(m=>String(m.id)!==String(id));saveDataToStorage();renderSavedCompositeMeals();}
+
+    function renderSavedCompositeMeals(){
+        const c=document.getElementById('savedCompositeMealsList');if(!c)return;
+        if(!appData.compositeMeals.length){c.innerHTML='<div style="font-size:.8rem;color:var(--text-muted);">Nessun pasto completo salvato.</div>';return;}
+        c.innerHTML=appData.compositeMeals.map(m=>{const t=compositeTotals(m);return `<div class="saved-template-card"><div class="saved-template-head"><strong>${escapeHtml(m.name)}</strong><button class="btn-danger-square" onclick="deleteCompositeMeal(${m.id})">✕</button></div><div class="template-macros">Totale: ${macroLine(t)}</div><div class="template-detail">${m.items.map(i=>`${escapeHtml(i.recipeName)} × ${i.multiplier===1?'1/1':i.multiplier===.5?'1/2':'1/4'}`).join(' · ')}</div></div>`}).join('');
+    }
+
+    async function openRecipeSelector(mealTarget){
+        if(!appData.recipes.length){appAlert('Non hai ancora salvato nessuna ricetta. Apri 🍲 Pasti e creane una.');return;}
+        const choices=appData.recipes.map(r=>({label:r.name,sub:`1 porzione · ${macroLine(recipePerPortion(r))}`}));
+        const idx=await appChoose('Scegli la ricetta da inserire:',choices); if(idx===null||!appData.recipes[idx])return;
+        insertRecipeIntoDiary(appData.recipes[idx],mealTarget,1);
+    }
+
+    function insertRecipeIntoDiary(recipe,mealTarget,multiplier=1){
+        const t=recipePerPortion(recipe); const f=Number(multiplier||1);
+        currentDayFoods.push({id:Date.now()+Math.random(),meal:mealTarget,nome:`${recipe.name}${f!==1?' × '+(f===.5?'1/2':'1/4'):''}`,sourceFoodKey:`recipe::${recipe.id}`,verified:false,grams:Math.round(recipe.ingredients.reduce((a,i)=>a+Number(i.grams||0),0)/Math.max(1,recipe.portions)*f*10)/10,kcal:Math.round(t.kcal*f),p:Math.round(t.p*f*10)/10,g:Math.round(t.g*f*10)/10,c:Math.round(t.c*f*10)/10,zuccheri:Math.round(t.zuccheri*f*10)/10,saturi:Math.round(t.saturi*f*10)/10,sale:Math.round(t.sale*f*100)/100});
+        updateTodaySummary();autoSaveDraft();
+    }
+
+    function insertCompositeMealIntoDiary(meal,mealTarget){
+        (meal.items||[]).forEach(i=>{
+            const t=macroNumbers(i.snapshot),f=Number(i.multiplier||1);
+            currentDayFoods.push({id:Date.now()+Math.random(),meal:mealTarget,nome:`${i.recipeName} (${f===1?'1/1':f===.5?'1/2':'1/4'})`,sourceFoodKey:`recipe::${i.recipeId}`,verified:false,grams:0,kcal:Math.round(t.kcal*f),p:Math.round(t.p*f*10)/10,g:Math.round(t.g*f*10)/10,c:Math.round(t.c*f*10)/10,zuccheri:Math.round(t.zuccheri*f*10)/10,saturi:Math.round(t.saturi*f*10)/10,sale:Math.round(t.sale*f*100)/100});
+        });
+        updateTodaySummary();autoSaveDraft();
+    }
+
+    function setSearchResource(resource){
+        searchResource=['food','recipe','meal'].includes(resource)?resource:'food';
+        document.querySelectorAll('.search-resource-tab').forEach(b=>b.classList.remove('active'));
+        const b=document.getElementById(`resourceTab-${searchResource}`);if(b)b.classList.add('active');
+        const fb=document.getElementById('foodFilterBar');if(fb)fb.style.display=searchResource==='food'?'grid':'none';
+        renderFoodSearchResults();
+    }
+
+    function renderTemplateSearchCard(kind,item,index){
+        const t=kind==='recipe'?recipePerPortion(item):compositeTotals(item);
+        const detail=kind==='recipe'?`${item.portions} ${item.portions===1?'porzione':'porzioni'} · ${item.ingredients.length} ingredienti`:`${item.items.length} ricette nel pasto`;
+        return `<div class="food-search-item" onclick="${kind==='recipe'?`useRecipeFromSearch(${index})`:`useCompositeFromSearch(${index})`}"><div class="food-search-main"><div class="template-search-kind">${kind==='recipe'?'Ricetta':'Pasto completo'}</div><div class="food-search-name">${escapeHtml(item.name)}</div><div class="template-search-portion">${escapeHtml(detail)}</div><div class="food-search-meta"><strong>${Math.round(t.kcal)}</strong> kcal · <strong>C</strong> ${t.c.toFixed(1)}g · <strong>G</strong> ${t.g.toFixed(1)}g · <strong>P</strong> ${t.p.toFixed(1)}g</div></div><button type="button" class="food-search-select-btn" onclick="event.stopPropagation();${kind==='recipe'?`useRecipeFromSearch(${index})`:`useCompositeFromSearch(${index})`}">Usa</button></div>`;
+    }
+
+    function useRecipeFromSearch(index){const r=appData.recipes[index];if(!r)return;const target=foodSearchTargetMeal||'Colazione';closeFoodSearch();insertRecipeIntoDiary(r,target,1);}
+    function useCompositeFromSearch(index){const m=appData.compositeMeals[index];if(!m)return;const target=foodSearchTargetMeal||'Colazione';closeFoodSearch();insertCompositeMealIntoDiary(m,target);}
 
     function exportBackup() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
@@ -3933,6 +4083,49 @@
         document.getElementById('newFoodSale').value = '';
         toggleDrawer('addFoodDrawer');
     }
+
+    /* ===== ESTENSIONE RICERCA UNIFICATA: alimenti / ricette / pasti ===== */
+    const _originalNormalizeAppData = normalizeAppData;
+    normalizeAppData = function(raw) {
+        const out = _originalNormalizeAppData(raw);
+        out.compositeMeals = Array.isArray(raw?.compositeMeals) ? raw.compositeMeals.filter(m=>m&&typeof m==='object'&&Array.isArray(m.items)).map(normalizeCompositeMeal) : [];
+        out.recipes = Array.isArray(out.recipes) ? out.recipes.map(normalizeRecipe) : [];
+        return out;
+    };
+
+    const _originalOpenFoodSearch = openFoodSearch;
+    openFoodSearch = function(mealTarget) {
+        searchResource='food';
+        _originalOpenFoodSearch(mealTarget);
+        setSearchResource('food');
+    };
+
+    const _originalCloseFoodSearch = closeFoodSearch;
+    closeFoodSearch = function(){ _originalCloseFoodSearch(); searchResource='food'; };
+
+    renderFoodSearchResults = function() {
+        const input=document.getElementById('foodSearchInput'),list=document.getElementById('foodSearchResults'),count=document.getElementById('foodSearchCount');
+        if(!input||!list||!count)return;
+        const q=input.value.toLowerCase().trim();
+        if(searchResource==='recipe'){
+            const matches=appData.recipes.filter(r=>!q||String(r.name).toLowerCase().includes(q)||r.ingredients.some(i=>String(i.nome).toLowerCase().includes(q)));
+            count.textContent=`${matches.length} ricett${matches.length===1?'a':'e'}`;
+            list.innerHTML=matches.length?matches.slice(0,200).map(r=>renderTemplateSearchCard('recipe',r,appData.recipes.indexOf(r))).join(''):'<div class="food-empty">Nessuna ricetta corrispondente.</div>';
+            return;
+        }
+        if(searchResource==='meal'){
+            const matches=appData.compositeMeals.filter(m=>!q||String(m.name).toLowerCase().includes(q)||m.items.some(i=>String(i.recipeName).toLowerCase().includes(q)));
+            count.textContent=`${matches.length} past${matches.length===1?'o':'i'} completi`;
+            list.innerHTML=matches.length?matches.slice(0,200).map(m=>renderTemplateSearchCard('meal',m,appData.compositeMeals.indexOf(m))).join(''):'<div class="food-empty">Nessun pasto completo corrispondente.</div>';
+            return;
+        }
+        const matches=FOOD_DATABASE.filter(food=>{const text=`${food.marca||''} ${food.nome||''}`.toLowerCase();const queryOk=!q||text.includes(q);const filterOk=foodSearchFilter==='all'||(foodSearchFilter==='verified'&&food.verified===true)||(foodSearchFilter==='added'&&food.verified===false)||(foodSearchFilter==='favorite'&&isFoodFavorite(food));return queryOk&&filterOk;});
+        const shown=matches.slice(0,200); count.textContent=`${matches.length} alimento${matches.length===1?'':'i'}${matches.length>200?' · mostrati i primi 200':''}`;
+        if(!shown.length){list.innerHTML='<div class="food-empty">Nessun alimento corrispondente al filtro o alla ricerca.</div>';return;}
+        list.innerHTML=shown.map(food=>{const index=FOOD_DATABASE.indexOf(food),favorite=isFoodFavorite(food),brand=food.marca&&String(food.marca).trim()&&String(food.marca).trim().toLowerCase()!=='web'?String(food.marca).trim():'—',name=food.nome?String(food.nome).trim():'Alimento',kcal=Number(food.kcal||0),pp=Number(food.p||0).toFixed(1),gg=Number(food.g||0).toFixed(1),cc=Number(food.c||0).toFixed(1);return `<div class="food-search-item" onclick="useFoodFromFullSearch(${index})"><div class="food-search-main"><div class="food-search-brand">${escapeHtml(brand)}</div><div class="food-search-name">${escapeHtml(name)} ${food.verified?'<span class="food-inline-verified">✓</span>':''}${favorite?'<span class="food-inline-favorite">★</span>':''}</div><div class="food-search-meta"><strong>${kcal}</strong> kcal · <strong>C</strong> ${cc}g · <strong>G</strong> ${gg}g · <strong>P</strong> ${pp}g</div></div><button type="button" class="food-favorite-btn ${favorite?'is-favorite':''}" onclick="event.stopPropagation();toggleFoodFavoriteByIndex(${index})">${favorite?'★':'☆'}</button><button type="button" class="food-search-select-btn" onclick="event.stopPropagation();useFoodFromFullSearch(${index})">Usa</button></div>`;}).join('');
+    };
+
+    function setFoodSearchFilter(filter){foodSearchFilter=['all','verified','added','favorite'].includes(filter)?filter:'all';document.querySelectorAll('.food-filter').forEach(btn=>btn.classList.remove('active'));const a=document.getElementById(`foodFilter-${foodSearchFilter}`);if(a)a.classList.add('active');renderFoodSearchResults();}
 </script>
 
 </body>
