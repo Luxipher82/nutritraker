@@ -3413,6 +3413,12 @@
         });
 
         document.getElementById('activityBurnEstimate').textContent = `Totale Bruciato Oggi: ~${totKcal} kcal`;
+
+        // Target dinamico: base + kcal bruciate con le attività di oggi
+        const prof = appData.profiles[currentSex];
+        const baseTarget = (prof && prof.targetKcal > 0) ? prof.targetKcal : 1850;
+        const dynamicTarget = baseTarget + totKcal;
+        document.getElementById('targetResultMain').textContent = `${dynamicTarget}`;
     }
 
     function searchFood(meal) {
