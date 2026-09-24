@@ -700,11 +700,55 @@
             font-size: 1rem;
         }
 
-        .history-item {
-            padding: 10px 0;
-            border-bottom: 1px solid var(--border);
-            font-size: 0.82rem;
+        .saved-expandable-card {
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 6px;
+            overflow: hidden;
+            background: var(--card-bg);
         }
+
+        .saved-expandable-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 12px;
+            cursor: pointer;
+            list-style: none;
+            font-size: 0.85rem;
+            font-weight: 600;
+            gap: 8px;
+        }
+
+        .saved-expandable-summary::-webkit-details-marker { display: none; }
+
+        .saved-expandable-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .saved-expandable-summary::before {
+            content: '▶';
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+            flex-shrink: 0;
+        }
+
+        details[open] .saved-expandable-summary::before {
+            transform: rotate(90deg);
+        }
+
+        .saved-expandable-body {
+            padding: 6px 12px 10px;
+            border-top: 1px solid var(--border);
+            font-size: 0.78rem;
+        }
+
+        .saved-expandable-body .template-macros { margin-bottom: 4px; font-weight: 600; }
+        .saved-expandable-body .template-detail { color: var(--text-muted); line-height: 1.5; }
 
         .history-header {
             display: flex;
@@ -1640,84 +1684,99 @@
             <button class="close-btn" data-haptic="tap" onclick="toggleDrawer('recipesDrawer')">✕</button>
         </div>
 
+        <!-- SCHERMATA 1: CREA -->
         <div class="recipe-manager-tabs">
-            <button id="recipeManagerTab-recipes" class="recipe-manager-tab active" onclick="showRecipeManagerTab('recipes')">🍰 Ricette</button>
-            <button id="recipeManagerTab-meals" class="recipe-manager-tab" onclick="showRecipeManagerTab('meals')">🍽️ Pasti completi</button>
+            <button id="recipeManagerTab-create" class="recipe-manager-tab active" onclick="showRecipeManagerTab('create')">➕ Crea</button>
+            <button id="recipeManagerTab-list" class="recipe-manager-tab" onclick="showRecipeManagerTab('list')">📋 Elenco</button>
         </div>
 
-        <section id="recipeManager-recipes">
-            <div class="manager-card">
-                <h4>➕ Crea nuova ricetta</h4>
-                <div class="form-group">
-                    <label for="recipeNameInput">Nome ricetta</label>
-                    <input type="text" id="recipeNameInput" placeholder="Es. Torta al cioccolato">
-                </div>
-                <div class="form-group">
-                    <label for="recipePortionsInput">Numero di porzioni</label>
-                    <input type="number" id="recipePortionsInput" min="1" step="1" value="1" placeholder="Es. 8">
-                </div>
-                <div id="recipeIngredientsList" class="recipe-builder-list"></div>
-                <div class="row recipe-add-row">
-                    <div style="flex:2; position:relative;">
-                        <input type="text" id="foodInput-Recipe" placeholder="Cerca ingrediente..." oninput="searchFood('Recipe')" autocomplete="off">
-                        <div id="searchResults-Recipe" class="autocomplete-results"></div>
-                    </div>
-                    <input type="number" id="foodGrams-Recipe" placeholder="g" style="flex:0.8;" min="0.1" step="0.1">
-                    <button type="button" onclick="addIngredientToRecipeDraft()" style="flex:0.7;">+ Add</button>
-                </div>
-                <div id="recipeDraftTotals" class="recipe-total-box"></div>
-                <div class="row">
-                    <button type="button" class="btn-secondary" onclick="clearRecipeDraft()">Svuota</button>
-                    <button type="button" onclick="saveNewRecipe()" style="background:var(--success);">Salva ricetta</button>
-                </div>
+        <!-- PANNELLO CREA: due sotto-tab Ricetta / Pasto -->
+        <section id="recipeManager-create">
+            <div class="recipe-manager-tabs" style="margin-bottom:10px;">
+                <button id="createTab-recipe" class="recipe-manager-tab active" onclick="showCreateTab('recipe')">🍰 Ricetta</button>
+                <button id="createTab-meal" class="recipe-manager-tab" onclick="showCreateTab('meal')">🍽️ Pasto completo</button>
             </div>
 
-            <h4 style="margin-top:10px;">Ricette salvate</h4>
-            <div id="savedRecipesList"></div>
-        </section>
-
-        <section id="recipeManager-meals" style="display:none;">
-            <div class="manager-card">
-                <h4>➕ Crea nuovo pasto completo</h4>
-                <div class="form-group">
-                    <label for="compositeMealNameInput">Nome del pasto</label>
-                    <input type="text" id="compositeMealNameInput" placeholder="Es. Pranzo del lunedì">
-                </div>
-                <div id="compositeMealDraftList" class="recipe-builder-list"></div>
-                <div class="form-group">
-                    <label for="compositeMealRecipeSelect">Aggiungi una ricetta salvata</label>
-                    <div class="row">
-                        <select id="compositeMealRecipeSelect"></select>
-                        <select id="compositeMealPortionSelect" style="flex:0.65;">
-                            <option value="2">×2</option>
-                            <option value="1">1/1</option>
-                            <option value="0.5">1/2</option>
-                            <option value="0.25">1/4</option>
-                        </select>
-                        <button type="button" onclick="addRecipeToCompositeDraft()" style="flex:0.65;">+ Add</button>
+            <!-- FORM RICETTA -->
+            <div id="createForm-recipe">
+                <div class="manager-card">
+                    <div class="form-group">
+                        <label for="recipeNameInput">Nome ricetta</label>
+                        <input type="text" id="recipeNameInput" placeholder="Es. Torta al cioccolato">
                     </div>
-                </div>
-                <div class="form-group" style="margin-top:8px;">
-                    <label>Aggiungi un alimento singolo dal database</label>
+                    <div class="form-group">
+                        <label for="recipePortionsInput">Numero di porzioni</label>
+                        <input type="number" id="recipePortionsInput" min="1" step="1" value="1" placeholder="Es. 8">
+                    </div>
+                    <div id="recipeIngredientsList" class="recipe-builder-list"></div>
                     <div class="row recipe-add-row">
                         <div style="flex:2; position:relative;">
-                            <input type="text" id="foodInput-CompositeMeal" placeholder="Cerca alimento..." oninput="searchFood('CompositeMeal')" autocomplete="off">
-                            <div id="searchResults-CompositeMeal" class="autocomplete-results"></div>
+                            <input type="text" id="foodInput-Recipe" placeholder="Cerca ingrediente..." oninput="searchFood('Recipe')" autocomplete="off">
+                            <div id="searchResults-Recipe" class="autocomplete-results"></div>
                         </div>
-                        <input type="number" id="foodGrams-CompositeMeal" placeholder="g" style="flex:0.8;" min="0.1" step="0.1">
-                        <button type="button" onclick="addFoodToCompositeDraft()" style="flex:0.7;">+ Add</button>
+                        <input type="number" id="foodGrams-Recipe" placeholder="g" style="flex:0.8;" min="0.1" step="0.1">
+                        <button type="button" onclick="addIngredientToRecipeDraft()" style="flex:0.7;">+ Add</button>
                     </div>
-                </div>
-                <div id="compositeMealDraftTotals" class="recipe-total-box"></div>
-                <div class="row">
-                    <button type="button" class="btn-secondary" onclick="clearCompositeMealDraft()">Svuota</button>
-                    <button type="button" onclick="saveCompositeMeal()" style="background:var(--success);">Salva pasto</button>
+                    <div id="recipeDraftTotals" class="recipe-total-box"></div>
+                    <div class="row">
+                        <button type="button" class="btn-secondary" onclick="clearRecipeDraft()">Svuota</button>
+                        <button type="button" onclick="saveNewRecipe()" style="background:var(--success);">Salva ricetta</button>
+                    </div>
                 </div>
             </div>
 
-            <h4 style="margin-top:10px;">Pasti completi salvati</h4>
-            <div id="savedCompositeMealsList"></div>
+            <!-- FORM PASTO COMPLETO -->
+            <div id="createForm-meal" style="display:none;">
+                <div class="manager-card">
+                    <div class="form-group">
+                        <label for="compositeMealNameInput">Nome del pasto</label>
+                        <input type="text" id="compositeMealNameInput" placeholder="Es. Pranzo del lunedì">
+                    </div>
+                    <div id="compositeMealDraftList" class="recipe-builder-list"></div>
+                    <div class="form-group">
+                        <label for="compositeMealRecipeSelect">Aggiungi una ricetta salvata</label>
+                        <div class="row">
+                            <select id="compositeMealRecipeSelect"></select>
+                            <select id="compositeMealPortionSelect" style="flex:0.65;">
+                                <option value="2">×2</option>
+                                <option value="1" selected>1/1</option>
+                                <option value="0.5">1/2</option>
+                                <option value="0.25">1/4</option>
+                            </select>
+                            <button type="button" onclick="addRecipeToCompositeDraft()" style="flex:0.65;">+ Add</button>
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top:8px;">
+                        <label>Aggiungi un alimento singolo dal database</label>
+                        <div class="row recipe-add-row">
+                            <div style="flex:2; position:relative;">
+                                <input type="text" id="foodInput-CompositeMeal" placeholder="Cerca alimento..." oninput="searchFood('CompositeMeal')" autocomplete="off">
+                                <div id="searchResults-CompositeMeal" class="autocomplete-results"></div>
+                            </div>
+                            <input type="number" id="foodGrams-CompositeMeal" placeholder="g" style="flex:0.8;" min="0.1" step="0.1">
+                            <button type="button" onclick="addFoodToCompositeDraft()" style="flex:0.7;">+ Add</button>
+                        </div>
+                    </div>
+                    <div id="compositeMealDraftTotals" class="recipe-total-box"></div>
+                    <div class="row">
+                        <button type="button" class="btn-secondary" onclick="clearCompositeMealDraft()">Svuota</button>
+                        <button type="button" onclick="saveCompositeMeal()" style="background:var(--success);">Salva pasto</button>
+                    </div>
+                </div>
+            </div>
         </section>
+
+        <!-- PANNELLO ELENCO: ricette e pasti come pannelli espandibili -->
+        <section id="recipeManager-list" style="display:none;">
+
+            <h4 style="margin:4px 0 8px;">🍰 Ricette</h4>
+            <div id="savedRecipesList"></div>
+
+            <h4 style="margin:14px 0 8px;">🍽️ Pasti completi</h4>
+            <div id="savedCompositeMealsList"></div>
+
+        </section>
+
     </div>
 </div>
 
@@ -2990,14 +3049,28 @@
         bmr = (currentSex === 'M') ? bmr + 5 : bmr - 161;
         const tdee = Math.round(bmr * actFactor);
 
+        // Peso minimo sicuro: BMI 18.5
+        const heightM = height / 100;
+        const minSafeWeight = Math.round(18.5 * heightM * heightM * 10) / 10;
+        // Soglia blocco: 10% sotto il peso minimo (floor assoluto invalicabile)
+        const absoluteFloor = Math.round(minSafeWeight * 0.90 * 10) / 10;
+
         // Leggo i campi obiettivo
         const dietGoal = document.getElementById('dietGoalSelect')?.value || prof.dietGoal || 'loss';
         const goalMode = document.getElementById('goalModeSelect')?.value || prof.goalMode || 'manual';
-        const targetWeight = parseFloat(document.getElementById('targetWeightInput')?.value) || prof.targetWeight || 0;
+        let targetWeight = parseFloat(document.getElementById('targetWeightInput')?.value) || prof.targetWeight || 0;
         const targetDate = document.getElementById('targetDateInput')?.value || prof.targetDate || '';
 
         let targetKcal = tdee;
         let autoWarning = '';
+
+        // Blocco sottopeso modalità automatica: corregge il campo peso target
+        if (goalMode === 'auto' && dietGoal === 'loss' && targetWeight > 0 && targetWeight < absoluteFloor) {
+            autoWarning = `🚫 Il peso obiettivo (${targetWeight} kg) porta al di sotto del limite di sicurezza (BMI 18.5 = ${minSafeWeight} kg per la tua altezza). Il target è stato corretto a ${absoluteFloor} kg.`;
+            targetWeight = absoluteFloor;
+            const twEl = document.getElementById('targetWeightInput');
+            if (twEl) twEl.value = absoluteFloor;
+        }
 
         if (goalMode === 'auto' && dietGoal !== 'maintain') {
             if (dietGoal === 'recomp') {
@@ -3005,7 +3078,7 @@
             } else if (targetWeight > 0 && targetDate) {
                 const daysLeft = Math.round((new Date(targetDate) - new Date()) / 86400000);
                 if (daysLeft < 7) {
-                    autoWarning = `⚠️ La data obiettivo è troppo vicina. Imposta una data di almeno 7 giorni nel futuro.`;
+                    autoWarning = autoWarning || `⚠️ La data obiettivo è troppo vicina. Imposta una data di almeno 7 giorni nel futuro.`;
                     targetKcal = tdee;
                 } else {
                     const weightDiff = targetWeight - currentWeight;
@@ -3015,13 +3088,13 @@
                     if (dietGoal === 'loss') {
                         const maxDeficit = Math.round(tdee * 0.30);
                         if (Math.abs(dailyDelta) > maxDeficit) {
-                            autoWarning = `⚠️ Deficit/surplus troppo elevato per questo obiettivo (${Math.abs(dailyDelta)} kcal/g calcolati, limite sicuro: ${maxDeficit} kcal/g). Allontana la data o riduci il peso da perdere.`;
+                            autoWarning = autoWarning || `⚠️ Deficit/surplus troppo elevato per questo obiettivo (${Math.abs(dailyDelta)} kcal/g calcolati, limite sicuro: ${maxDeficit} kcal/g). Allontana la data o riduci il peso da perdere.`;
                             targetKcal = tdee - maxDeficit;
                         }
                     } else if (dietGoal === 'gain') {
                         const maxSurplus = 750;
                         if (dailyDelta > maxSurplus) {
-                            autoWarning = `⚠️ Deficit/surplus troppo elevato per questo obiettivo (${dailyDelta} kcal/g calcolati, massimo consigliato: ${maxSurplus} kcal/g). Allontana la data o riduci il peso da guadagnare.`;
+                            autoWarning = autoWarning || `⚠️ Deficit/surplus troppo elevato per questo obiettivo (${dailyDelta} kcal/g calcolati, massimo consigliato: ${maxSurplus} kcal/g). Allontana la data o riduci il peso da guadagnare.`;
                             targetKcal = tdee + maxSurplus;
                         }
                     }
@@ -3036,6 +3109,21 @@
             else if (deficitVal === 'surplus_750') { targetKcal = tdee + 750; }
             else { deficitPct = parseFloat(deficitVal) || 0; targetKcal = Math.round(tdee * (1 - deficitPct / 100)); }
             prof.deficitPct = parseFloat(deficitVal) || 0;
+
+            // Blocco sottopeso modalità manuale:
+            // Stima quante kcal/giorno servono per non scendere sotto absoluteFloor
+            // (supponendo perdita lineare: ogni 7700 kcal di deficit = -1 kg)
+            // Se il target porta a meno di absoluteFloor in futuro, limitiamo il deficit
+            if (dietGoal === 'loss' && currentWeight > absoluteFloor) {
+                // kcal minime per mantenere absoluteFloor (BMR approssimativo a quel peso)
+                let bmrFloor = (10 * absoluteFloor) + (6.25 * height) - (5 * age);
+                bmrFloor = (currentSex === 'M') ? bmrFloor + 5 : bmrFloor - 161;
+                const minKcal = Math.round(bmrFloor * actFactor * 0.90); // 10% sotto TDEE al peso floor
+                if (targetKcal < minKcal) {
+                    autoWarning = `🚫 Il deficit impostato potrebbe portarti sotto il limite di sicurezza (BMI 18.5 = ${minSafeWeight} kg per la tua altezza). Il target calorico è stato corretto al minimo sicuro (${minKcal} kcal).`;
+                    targetKcal = minKcal;
+                }
+            }
         }
 
         targetKcal = Math.max(1000, Math.round(targetKcal));
@@ -3052,7 +3140,7 @@
 
         saveDataToStorage();
 
-        // Avviso auto se necessario
+        // Avviso sottopeso ha priorità, poi altri avvisi
         if (autoWarning) setTimeout(() => appAlert(autoWarning), 200);
 
         // Aggiorna il display del target (il target dinamico è base + attività già in memoria)
@@ -4145,11 +4233,29 @@
     }
 
     function showRecipeManagerTab(tab) {
-        document.getElementById('recipeManager-recipes').style.display = tab === 'recipes' ? '' : 'none';
-        document.getElementById('recipeManager-meals').style.display = tab === 'meals' ? '' : 'none';
-        document.querySelectorAll('.recipe-manager-tab').forEach(b=>b.classList.remove('active'));
-        const b=document.getElementById(`recipeManagerTab-${tab}`); if(b) b.classList.add('active');
-        if(tab==='meals') { renderCompositeRecipeSelect(); renderCompositeMealDraft(); renderSavedCompositeMeals(); }
+        ['create','list'].forEach(t => {
+            const btn = document.getElementById(`recipeManagerTab-${t}`);
+            const sec = document.getElementById(`recipeManager-${t}`);
+            if (btn) btn.classList.toggle('active', t === tab);
+            if (sec) sec.style.display = t === tab ? 'block' : 'none';
+        });
+        if (tab === 'list') {
+            renderSavedRecipes();
+            renderSavedCompositeMeals();
+        }
+        if (tab === 'create') {
+            renderCompositeRecipeSelect();
+            renderCompositeMealDraft();
+        }
+    }
+
+    function showCreateTab(tab) {
+        ['recipe','meal'].forEach(t => {
+            const btn = document.getElementById(`createTab-${t}`);
+            const form = document.getElementById(`createForm-${t}`);
+            if (btn) btn.classList.toggle('active', t === tab);
+            if (form) form.style.display = t === tab ? 'block' : 'none';
+        });
     }
 
     function addIngredientToRecipeDraft() {
@@ -4197,14 +4303,56 @@
 
     function editRecipe(id) {
         const r=appData.recipes.find(x=>String(x.id)===String(id)); if(!r)return;
-        recipeDraftEditId=r.id; document.getElementById('recipeNameInput').value=r.name; document.getElementById('recipePortionsInput').value=r.portions; recipeDraftIngredients=r.ingredients.map(x=>({...x,snapshot:macroNumbers(x.snapshot||x)})); renderRecipeDraft(); showRecipeManagerTab('recipes');
+        recipeDraftEditId=r.id; document.getElementById('recipeNameInput').value=r.name; document.getElementById('recipePortionsInput').value=r.portions; recipeDraftIngredients=r.ingredients.map(x=>({...x,snapshot:macroNumbers(x.snapshot||x)})); renderRecipeDraft(); showRecipeManagerTab('create'); showCreateTab('recipe');
         document.getElementById('recipeNameInput').scrollIntoView({behavior:'smooth',block:'center'});
     }
 
     function renderSavedRecipes() {
-        const c=document.getElementById('savedRecipesList'); if(!c)return;
-        if(!appData.recipes.length){c.innerHTML='<div style="font-size:.8rem;color:var(--text-muted);">Nessuna ricetta salvata.</div>';return;}
-        c.innerHTML=appData.recipes.map(r=>{const t=recipePerPortion(r);return `<div class="saved-template-card"><div class="saved-template-head"><strong>${escapeHtml(r.name)}</strong><div class="saved-template-actions"><button class="btn-edit" onclick="editRecipe(${r.id})">Modifica</button><button class="btn-danger-square" onclick="deleteRecipe(${r.id})">✕</button></div></div><div class="template-macros">1 porzione: ${macroLine(t)}</div><div class="template-detail">${r.portions} ${r.portions===1?'porzione':'porzioni'} · ${r.ingredients.map(i=>`${escapeHtml(i.nome)} ${i.grams}g`).join(', ')}</div></div>`}).join('');
+        const c = document.getElementById('savedRecipesList'); if (!c) return;
+        if (!appData.recipes.length) { c.innerHTML = '<div style="font-size:.8rem;color:var(--text-muted);">Nessuna ricetta salvata.</div>'; return; }
+        c.innerHTML = appData.recipes.map(r => {
+            const t = recipePerPortion(r);
+            const detail = r.ingredients.map(i => `🥕 ${escapeHtml(i.nome)} ${i.grams}g`).join(' · ');
+            return `<details class="saved-expandable-card">
+                <summary class="saved-expandable-summary">
+                    <span class="saved-expandable-name">${escapeHtml(r.name)}</span>
+                    <div class="saved-template-actions" onclick="event.stopPropagation()">
+                        <button class="btn-edit" onclick="editRecipe(${r.id})">✏️</button>
+                        <button class="btn-danger-square" onclick="deleteRecipe(${r.id})">✕</button>
+                    </div>
+                </summary>
+                <div class="saved-expandable-body">
+                    <div class="template-macros">1 porzione: ${macroLine(t)}</div>
+                    <div class="template-detail">${r.portions} ${r.portions === 1 ? 'porzione' : 'porzioni'} · ${detail}</div>
+                </div>
+            </details>`;
+        }).join('');
+    }
+
+    function renderSavedCompositeMeals() {
+        const c = document.getElementById('savedCompositeMealsList'); if (!c) return;
+        if (!appData.compositeMeals.length) { c.innerHTML = '<div style="font-size:.8rem;color:var(--text-muted);">Nessun pasto completo salvato.</div>'; return; }
+        c.innerHTML = appData.compositeMeals.map(m => {
+            const t = compositeTotals(m);
+            const detail = m.items.map(i => {
+                if (i.type === 'food') return `🥕 ${escapeHtml(i.foodName)} ${i.grams}g`;
+                const mult = Number(i.multiplier || 1);
+                const multLabel = mult === 2 ? '×2' : mult === 1 ? '1/1' : mult === .5 ? '1/2' : '1/4';
+                return `🍰 ${escapeHtml(i.recipeName || i.foodName)} × ${multLabel}`;
+            }).join(' · ');
+            return `<details class="saved-expandable-card">
+                <summary class="saved-expandable-summary">
+                    <span class="saved-expandable-name">${escapeHtml(m.name)}</span>
+                    <div class="saved-template-actions" onclick="event.stopPropagation()">
+                        <button class="btn-danger-square" onclick="deleteCompositeMeal(${m.id})">✕</button>
+                    </div>
+                </summary>
+                <div class="saved-expandable-body">
+                    <div class="template-macros">Totale: ${macroLine(t)}</div>
+                    <div class="template-detail">${detail}</div>
+                </div>
+            </details>`;
+        }).join('');
     }
 
     function deleteRecipe(id) {
@@ -4266,21 +4414,6 @@
     }
 
     function deleteCompositeMeal(id){appData.compositeMeals=appData.compositeMeals.filter(m=>String(m.id)!==String(id));saveDataToStorage();renderSavedCompositeMeals();}
-
-    function renderSavedCompositeMeals(){
-        const c=document.getElementById('savedCompositeMealsList');if(!c)return;
-        if(!appData.compositeMeals.length){c.innerHTML='<div style="font-size:.8rem;color:var(--text-muted);">Nessun pasto completo salvato.</div>';return;}
-        c.innerHTML=appData.compositeMeals.map(m=>{
-            const t=compositeTotals(m);
-            const detail=m.items.map(i=>{
-                if(i.type==='food') return `🥕 ${escapeHtml(i.foodName)} ${i.grams}g`;
-                const mult=Number(i.multiplier||1);
-                const multLabel=mult===2?'×2':mult===1?'1/1':mult===.5?'1/2':'1/4';
-                return `🍰 ${escapeHtml(i.recipeName||i.foodName)} × ${multLabel}`;
-            }).join(' · ');
-            return `<div class="saved-template-card"><div class="saved-template-head"><strong>${escapeHtml(m.name)}</strong><button class="btn-danger-square" onclick="deleteCompositeMeal(${m.id})">✕</button></div><div class="template-macros">Totale: ${macroLine(t)}</div><div class="template-detail">${detail}</div></div>`;
-        }).join('');
-    }
 
     async function openRecipeSelector(mealTarget){
         if(!appData.recipes.length){appAlert('Non hai ancora salvato nessuna ricetta. Apri 🍲 Pasti e creane una.');return;}
