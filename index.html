@@ -1560,6 +1560,7 @@
 
         <div>
             <label>Grafico Andamento Peso:</label>
+            <div id="weightGoalProgressBox" style="display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;"></div>
             <canvas id="weightChart"></canvas>
         </div>
     </div>
@@ -2663,6 +2664,7 @@
         renderMacroSection();
         applyProfileLockUI();
         checkWeightReminder();
+        updateWeightGoalProgress();
     }
 
     /* ===== CONFERMA, BLOCCO E MODIFICA DEL PROFILO ===== */
@@ -2999,26 +3001,29 @@
 
         if (goalMode === 'auto' && dietGoal !== 'maintain') {
             if (dietGoal === 'recomp') {
-                // Ricomposizione: deficit fisso -200 kcal, tetto -300
                 targetKcal = tdee - 200;
             } else if (targetWeight > 0 && targetDate) {
-                const daysLeft = Math.max(1, Math.round((new Date(targetDate) - new Date()) / 86400000));
-                const weightDiff = targetWeight - currentWeight; // negativo = perdere, positivo = guadagnare
-                // 1 kg grasso ≈ 7700 kcal
-                const dailyDelta = Math.round((weightDiff * 7700) / daysLeft);
-                targetKcal = tdee + dailyDelta;
+                const daysLeft = Math.round((new Date(targetDate) - new Date()) / 86400000);
+                if (daysLeft < 7) {
+                    autoWarning = `⚠️ La data obiettivo è troppo vicina. Imposta una data di almeno 7 giorni nel futuro.`;
+                    targetKcal = tdee;
+                } else {
+                    const weightDiff = targetWeight - currentWeight;
+                    const dailyDelta = Math.round((weightDiff * 7700) / daysLeft);
+                    targetKcal = tdee + dailyDelta;
 
-                if (dietGoal === 'loss') {
-                    const maxDeficit = Math.round(tdee * 0.30);
-                    if (Math.abs(dailyDelta) > maxDeficit) {
-                        autoWarning = `⚠️ Il ritmo calcolato (${Math.abs(dailyDelta)} kcal/g) supera il 30% del TDEE (limite sicuro: ${maxDeficit} kcal/g). Il target è stato limitato.`;
-                        targetKcal = tdee - maxDeficit;
-                    }
-                } else if (dietGoal === 'gain') {
-                    const maxSurplus = 750;
-                    if (dailyDelta > maxSurplus) {
-                        autoWarning = `⚠️ Il surplus calcolato (${dailyDelta} kcal/g) supera il massimo consigliato (${maxSurplus} kcal/g). Il target è stato limitato.`;
-                        targetKcal = tdee + maxSurplus;
+                    if (dietGoal === 'loss') {
+                        const maxDeficit = Math.round(tdee * 0.30);
+                        if (Math.abs(dailyDelta) > maxDeficit) {
+                            autoWarning = `⚠️ Deficit/surplus troppo elevato per questo obiettivo (${Math.abs(dailyDelta)} kcal/g calcolati, limite sicuro: ${maxDeficit} kcal/g). Allontana la data o riduci il peso da perdere.`;
+                            targetKcal = tdee - maxDeficit;
+                        }
+                    } else if (dietGoal === 'gain') {
+                        const maxSurplus = 750;
+                        if (dailyDelta > maxSurplus) {
+                            autoWarning = `⚠️ Deficit/surplus troppo elevato per questo obiettivo (${dailyDelta} kcal/g calcolati, massimo consigliato: ${maxSurplus} kcal/g). Allontana la data o riduci il peso da guadagnare.`;
+                            targetKcal = tdee + maxSurplus;
+                        }
                     }
                 }
             }
@@ -3050,13 +3055,15 @@
         // Avviso auto se necessario
         if (autoWarning) setTimeout(() => appAlert(autoWarning), 200);
 
-        document.getElementById('targetResultMain').textContent = `${targetKcal}`;
+        // Aggiorna il display del target (il target dinamico è base + attività già in memoria)
+        const dynamicTarget = getDynamicTarget();
+        document.getElementById('targetResultMain').textContent = `${dynamicTarget}`;
         calculateWaterTarget();
-        updateActivitiesSummary();
         updateMacroTargetsDisplay();
         updateProgressBars();
         updateAgeInfo();
         updateGoalUI();
+        updateWeightGoalProgress();
     }
 
     // Aggiorna la visibilità delle sezioni UI in base allo scopo e alla modalità
@@ -3106,6 +3113,7 @@
         calculateTDEE();
         checkWeightReminder();
         drawWeightChart();
+        updateWeightGoalProgress();
         showToast(`✅ Pesata di ${val} kg registrata!`);
     }
 
@@ -3133,7 +3141,7 @@
 
         const cssW = canvas.clientWidth;
         const cssH = canvas.clientHeight;
-        if (!cssW || !cssH) return; // drawer chiuso: verrà ridisegnato all'apertura
+        if (!cssW || !cssH) return;
 
         const dpr = window.devicePixelRatio || 1;
         const pxW = Math.round(cssW * dpr);
@@ -3164,11 +3172,14 @@
         const width = cssW - (padding * 2);
         const height = cssH - (padding * 2);
 
+        const targetW = prof.targetWeight || 0;
         const weights = history.map(h => h.weight);
-        let minW = Math.min(...weights) - 1;
-        let maxW = Math.max(...weights) + 1;
+        const allWeights = targetW > 0 ? [...weights, targetW] : weights;
+        let minW = Math.min(...allWeights) - 1;
+        let maxW = Math.max(...allWeights) + 1;
         if (minW === maxW) { minW -= 1; maxW += 1; }
 
+        // Assi
         ctx.beginPath();
         ctx.strokeStyle = "#cbd5e1";
         ctx.lineWidth = 1;
@@ -3177,6 +3188,27 @@
         ctx.lineTo(cssW - padding, cssH - padding);
         ctx.stroke();
 
+        // Linea tratteggiata peso obiettivo (se impostato)
+        if (targetW > 0) {
+            const targetY = cssH - padding - ((targetW - minW) / (maxW - minW)) * height;
+            ctx.save();
+            ctx.setLineDash([5, 4]);
+            ctx.strokeStyle = '#f59e0b';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(padding, targetY);
+            ctx.lineTo(cssW - padding, targetY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.fillStyle = '#f59e0b';
+            ctx.font = 'bold 10px sans-serif';
+            ctx.textAlign = 'right';
+            ctx.fillText(`🎯 ${targetW}kg`, cssW - padding - 2, targetY - 4);
+            ctx.textAlign = 'left';
+            ctx.restore();
+        }
+
+        // Linea peso reale
         ctx.beginPath();
         ctx.strokeStyle = currentSex === 'F' ? '#818cf8' : '#ec4899';
         ctx.lineWidth = 2;
@@ -3184,12 +3216,12 @@
         history.forEach((item, idx) => {
             const x = history.length === 1 ? cssW / 2 : padding + (idx / (history.length - 1)) * width;
             const y = cssH - padding - ((item.weight - minW) / (maxW - minW)) * height;
-
             if (idx === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
         });
         ctx.stroke();
 
+        // Punti e label
         history.forEach((item, idx) => {
             const x = history.length === 1 ? cssW / 2 : padding + (idx / (history.length - 1)) * width;
             const y = cssH - padding - ((item.weight - minW) / (maxW - minW)) * height;
@@ -3205,6 +3237,43 @@
             ctx.font = "10px sans-serif";
             ctx.fillText(`${item.weight}kg`, x - 10, y - 8);
         });
+    }
+
+    // Box progresso obiettivo peso nel profilo
+    function updateWeightGoalProgress() {
+        const box = document.getElementById('weightGoalProgressBox');
+        if (!box) return;
+        const prof = appData.profiles[currentSex];
+        if (!prof || !prof.targetWeight || prof.weightHistory.length === 0) {
+            box.style.display = 'none';
+            return;
+        }
+        const startWeight = prof.weightHistory[0].weight;
+        const currentWeight = prof.weightHistory[prof.weightHistory.length - 1].weight;
+        const targetW = prof.targetWeight;
+        const totalDelta = Math.abs(targetW - startWeight);
+        if (totalDelta < 0.1) { box.style.display = 'none'; return; }
+
+        const done = Math.abs(currentWeight - startWeight);
+        const pct = Math.min(100, Math.round((done / totalDelta) * 100));
+        const remaining = Math.abs(targetW - currentWeight).toFixed(1);
+        const direction = targetW < startWeight ? 'persi' : 'guadagnati';
+
+        // Stima giorni rimanenti
+        let etaStr = '';
+        if (prof.targetDate) {
+            const daysLeft = Math.round((new Date(prof.targetDate) - new Date()) / 86400000);
+            etaStr = daysLeft > 0 ? ` · ${daysLeft} giorni al traguardo` : ' · Data obiettivo superata';
+        }
+
+        box.style.display = 'block';
+        box.innerHTML = `
+            <div style="font-size:.78rem;font-weight:600;margin-bottom:4px;">📊 Progresso verso l'obiettivo</div>
+            <div style="background:var(--border);border-radius:6px;height:8px;overflow:hidden;margin-bottom:4px;">
+                <div style="width:${pct}%;height:100%;background:var(--success);border-radius:6px;transition:width .4s;"></div>
+            </div>
+            <div style="font-size:.73rem;color:var(--text-muted);">${pct}% completato · ${remaining} kg ancora da ${targetW < startWeight ? 'perdere' : 'guadagnare'} · ${done.toFixed(1)} kg ${direction}${etaStr}</div>
+        `;
     }
 
     /* ===== RIPARTIZIONE MACRO ===== */
@@ -3495,13 +3564,22 @@
     }
 
     function updateProgressBars() {
+        updateProgressBarsWithTarget(getDynamicTarget());
+    }
+
+    function updateProgressBarsWithTarget(dynamicKcal) {
         const prof = appData.profiles[currentSex];
         if (!prof) return;
-        const t = getMacroTargets(prof);
+        const split = getMacroSplit(prof);
+        const kcal = dynamicKcal || getDynamicTarget();
 
-        setProgress('p', todayTotals.p, t.pG, 'goal', 'g');
-        setProgress('c', todayTotals.c, t.cG, 'limit', 'g');
-        setProgress('g', todayTotals.g, t.gG, 'limit', 'g');
+        const pKcal = kcal * split.p / 100;
+        const cKcal = kcal * split.c / 100;
+        const gKcal = kcal * split.g / 100;
+
+        setProgress('p', todayTotals.p, pKcal / KCAL_PER_GRAM.p, 'goal', 'g');
+        setProgress('c', todayTotals.c, cKcal / KCAL_PER_GRAM.c, 'limit', 'g');
+        setProgress('g', todayTotals.g, gKcal / KCAL_PER_GRAM.g, 'limit', 'g');
         setProgress('w', currentWaterMl, waterTargetMl, 'goal', 'ml');
     }
 
@@ -3537,6 +3615,15 @@
         autoSaveDraft();
     }
 
+    // Restituisce il target calorico attivo (base + kcal bruciate oggi)
+    // Unico punto dove questo calcolo avviene — evita il loop tra calculateTDEE e updateActivitiesSummary
+    function getDynamicTarget() {
+        const prof = appData.profiles[currentSex];
+        const base = (prof && prof.targetKcal > 0) ? prof.targetKcal : 1850;
+        const burned = currentDayActivities.reduce((s, a) => s + (a.kcal || 0), 0);
+        return base + burned;
+    }
+
     function updateActivitiesSummary() {
         const list = document.getElementById('todayActivitiesList');
         list.innerHTML = '';
@@ -3554,11 +3641,11 @@
 
         document.getElementById('activityBurnEstimate').textContent = `Totale Bruciato Oggi: ~${totKcal} kcal`;
 
-        // Target dinamico: base + kcal bruciate con le attività di oggi
-        const prof = appData.profiles[currentSex];
-        const baseTarget = (prof && prof.targetKcal > 0) ? prof.targetKcal : 1850;
-        const dynamicTarget = baseTarget + totKcal;
+        const dynamicTarget = getDynamicTarget();
         document.getElementById('targetResultMain').textContent = `${dynamicTarget}`;
+
+        // Aggiorna anche le barre macro con il target dinamico
+        updateProgressBarsWithTarget(dynamicTarget);
     }
 
     function searchFood(meal) {
@@ -3568,6 +3655,12 @@
 
         if (query.length < 1) {
             resultsDiv.style.display = 'none';
+            return;
+        }
+
+        if (!FOOD_DATABASE || FOOD_DATABASE.length === 0) {
+            resultsDiv.innerHTML = '<div class="autocomplete-item" style="color:var(--text-muted);pointer-events:none;">⚠️ Database non caricato. Aggiorna dal menu impostazioni.</div>';
+            resultsDiv.style.display = 'block';
             return;
         }
 
