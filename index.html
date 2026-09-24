@@ -1685,6 +1685,16 @@
             <div id="weightGoalProgressBox" style="display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;"></div>
             <canvas id="weightChart"></canvas>
         </div>
+
+        <hr style="margin: 20px 0 8px; border: 0; border-top: 1px solid var(--border);">
+
+        <!-- ZONA PERICOLOSA: RESET -->
+        <div style="border: 1px solid var(--danger); border-radius: 8px; padding: 10px; margin-top: 4px; opacity: 0.9;">
+            <h4 style="color: var(--danger); font-size: 0.9rem;">⚠️ Zona pericolosa</h4>
+            <div class="macro-note" style="margin-bottom: 8px;">Le azioni qui sotto sono irreversibili.</div>
+            <button class="btn-secondary" data-haptic="warn" onclick="resetActiveProfile()" style="width: 100%; padding: 8px; margin-bottom: 6px; border-color: var(--danger); color: var(--danger);">🔄 Resetta questo profilo</button>
+            <button class="btn-secondary" data-haptic="warn" onclick="resetAllData()" style="width: 100%; padding: 8px; border-color: var(--danger); color: var(--danger);">🗑️ Reset totale (tutti i dati)</button>
+        </div>
     </div>
 </div>
 
@@ -4636,6 +4646,57 @@
 
     function saveDataToStorage() {
         localStorage.setItem('nutritionTrackerDataWeb', JSON.stringify(appData));
+    }
+
+    /* ===== RESET: ZONA PERICOLOSA ===== */
+
+    // Reset totale: cancella profili, storico, ricette, pasti completi, alimenti caricati (Excel + personali), preferiti e bozze.
+    async function resetAllData() {
+        const ok = await appConfirm(
+            '⚠️ Questa azione cancellerà tutti i dati profilo e dello storico, comprese ricette, pasti e alimenti caricati. L\'azione non è reversibile. Continuare?',
+            { confirmText: 'Cancella tutto', danger: true }
+        );
+        if (!ok) return;
+
+        localStorage.removeItem('nutritionTrackerDataWeb');
+        localStorage.removeItem('customFoodsDatabase');
+        localStorage.removeItem('personalFoodsDatabase');
+        localStorage.removeItem('favoriteFoodsDatabase');
+        localStorage.removeItem('lastVisitDateNutriTracker');
+        localStorage.removeItem('todayDraftNutriTracker_F');
+        localStorage.removeItem('todayDraftNutriTracker_M');
+
+        window.location.reload();
+    }
+
+    // Reset del solo profilo attivo: dati anagrafici, storico e cronologia peso di quel sesso.
+    // Ricette e pasti completi sono condivisi tra i due profili e restano invariati.
+    async function resetActiveProfile() {
+        const label = currentSex === 'M' ? 'Uomo' : 'Donna';
+        const ok = await appConfirm(
+            `⚠️ Questa azione resetterà il profilo ${label} e il relativo storico: sarà necessario crearlo di nuovo. L'azione non è reversibile. Continuare?`,
+            { confirmText: 'Resetta profilo', danger: true }
+        );
+        if (!ok) return;
+
+        const sexToReset = currentSex;
+
+        // Rimuove dallo storico solo le voci di questo profilo
+        appData.entries = appData.entries.filter(e => e.profileSex !== sexToReset);
+
+        // Ricrea il profilo da zero
+        appData.profiles[sexToReset] = defaultProfile(sexToReset);
+
+        // Sblocca il profilo per permettere una nuova compilazione
+        if (appData.lockedSex === sexToReset) {
+            appData.lockedSex = null;
+        }
+        appData.profileEditing = false;
+
+        localStorage.removeItem(`todayDraftNutriTracker_${sexToReset}`);
+
+        saveDataToStorage();
+        window.location.reload();
     }
 
     // ===== RICETTE E PASTI COMPLETI =====
