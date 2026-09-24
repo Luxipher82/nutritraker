@@ -2928,7 +2928,7 @@
 
         prof.birthDate = value;
         saveDataToStorage();
-        calculateTDEE();
+        calculateTDEE(true);
         applyProfileLockUI();
     }
 
@@ -3367,15 +3367,12 @@
             else { deficitPct = parseFloat(deficitVal) || 0; targetKcal = Math.round(tdee * (1 - deficitPct / 100)); }
             prof.deficitPct = parseFloat(deficitVal) || 0;
 
-            // Blocco sottopeso modalità manuale:
-            // Stima quante kcal/giorno servono per non scendere sotto absoluteFloor
-            // (supponendo perdita lineare: ogni 7700 kcal di deficit = -1 kg)
-            // Se il target porta a meno di absoluteFloor in futuro, limitiamo il deficit
-            if (dietGoal === 'loss' && currentWeight > absoluteFloor) {
-                // kcal minime per mantenere absoluteFloor (BMR approssimativo a quel peso)
+            // Blocco sottopeso modalità manuale: la correzione avviene solo alla conferma
+            // (validateProfileBeforeConfirmation). Qui calcoliamo solo l'anteprima del target.
+            if (dietGoal === 'loss' && currentWeight > absoluteFloor && save) {
                 let bmrFloor = (10 * absoluteFloor) + (6.25 * height) - (5 * age);
                 bmrFloor = (currentSex === 'M') ? bmrFloor + 5 : bmrFloor - 161;
-                const minKcal = Math.round(bmrFloor * actFactor * 0.90); // 10% sotto TDEE al peso floor
+                const minKcal = Math.round(bmrFloor * actFactor * 0.90);
                 if (targetKcal < minKcal) {
                     targetKcal = minKcal;
                 }
@@ -3427,8 +3424,8 @@
         const manualDeficitBox = document.getElementById('manualDeficitBox');
         const suggestionNote = document.getElementById('deficitSuggestionNote');
 
-        // Box peso/data: visibile solo in auto e se non è mantenimento
-        if (weightGoalBox) weightGoalBox.style.display = 'block';
+        // Box peso/data: visibile solo in auto e se non è mantenimento o ricomposizione
+        if (weightGoalBox) weightGoalBox.style.display = (goalMode === 'auto' && dietGoal !== 'maintain' && dietGoal !== 'recomp') ? 'block' : 'none';
         // Box deficit manuale: visibile solo in modalità manuale
         if (manualDeficitBox) manualDeficitBox.style.display = goalMode === 'manual' ? 'block' : 'none';
 
