@@ -3044,6 +3044,7 @@
         saveDataToStorage();
         applyProfileLockUI();
         renderHistory();
+        drawWeightChart();
         showToast(firstTime ? "🔒 Profilo confermato." : "🔒 Modifiche confermate.");
     }
 
@@ -3350,6 +3351,10 @@
         updateAgeInfo();
         updateGoalUI();
         updateWeightGoalProgress();
+        // Mantieni il grafico sincronizzato con il peso obiettivo appena modificato.
+        // Durante la modifica del profilo il grafico usa il valore del campo UI;
+        // alla conferma calculateTDEE(true) lo salva definitivamente nel profilo.
+        drawWeightChart();
     }
 
     // Aggiorna la visibilità delle sezioni UI in base allo scopo e alla modalità
@@ -3464,7 +3469,19 @@
         const width = cssW - (padding * 2);
         const height = cssH - (padding * 2);
 
-        const targetW = prof.targetWeight || 0;
+        // Se il profilo è in modifica, il campo UI può contenere un nuovo
+        // obiettivo non ancora salvato: il grafico deve rifletterlo subito.
+        // Altrimenti usa esclusivamente il target persistito del profilo.
+        let targetW = Number(prof.targetWeight) || 0;
+        if (appData.profileEditing) {
+            const liveTarget = document.getElementById('targetWeightInput')?.value?.trim() || '';
+            if (liveTarget !== '') {
+                const parsedLiveTarget = parseFloat(liveTarget);
+                if (Number.isFinite(parsedLiveTarget) && parsedLiveTarget > 0) targetW = parsedLiveTarget;
+            } else {
+                targetW = 0;
+            }
+        }
         const weights = history.map(h => h.weight);
         const allWeights = targetW > 0 ? [...weights, targetW] : weights;
         let minW = Math.min(...allWeights) - 1;
