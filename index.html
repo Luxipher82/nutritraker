@@ -1171,7 +1171,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center;">
             <span style="font-size: 0.88rem; font-weight: 600;">Target Calorico:</span>
             <span style="font-size: 1.05rem; font-weight: bold; color: var(--primary);">
-                <span id="consumedKcalMain">0</span> / <span id="targetResultMain">1850</span> kcal
+                <span id="consumedKcalMain">0</span> / <span id="targetResultMain">—</span> kcal
             </span>
         </div>
         <div id="weightReminderBanner" style="display:none; background:#fffbebfb; border:1px solid #fef3c7; color:#b45309; padding:6px 10px; border-radius:6px; font-size:0.78rem; margin-top:6px;">
@@ -1486,17 +1486,27 @@
         <div class="row">
             <div class="form-group">
                 <label for="height">Altezza (cm)</label>
-                <input type="number" id="height" value="165" oninput="calculateTDEE()">
+                <input type="number" id="height" placeholder="" min="100" max="250" step="0.1" oninput="calculateTDEE()">
             </div>
             <div class="form-group">
                 <label for="activity">Attività Fisica Generale</label>
                 <select id="activity" onchange="calculateTDEE()">
+                    <option value="" disabled selected>Seleziona il livello di attività</option>
                     <option value="1.2">Sedentaria</option>
                     <option value="1.375">Leggera</option>
                     <option value="1.55" selected>Moderata</option>
                     <option value="1.725">Intensa</option>
                 </select>
             </div>
+        </div>
+
+        <h4>⚖️ Pesata Bisettimanale</h4>
+        <div class="row" style="align-items: flex-end;">
+            <div class="form-group" style="flex: 1.2;">
+                <label for="currentWeightInput">Peso Rilevato (kg)</label>
+                <input type="number" id="currentWeightInput" placeholder="" step="0.1">
+            </div>
+            <button data-haptic="success" onclick="addWeightRecord()" style="flex: 1; margin-bottom: 8px; padding: 8px;">Registra Pesata</button>
         </div>
 
         <div class="form-group">
@@ -1522,7 +1532,7 @@
             <div class="row">
                 <div class="form-group">
                     <label for="targetWeightInput">Peso obiettivo (kg)</label>
-                    <input type="number" id="targetWeightInput" placeholder="Es. 75" step="0.1" min="30" max="300" oninput="calculateTDEE()">
+                    <input type="number" id="targetWeightInput" placeholder="" step="0.1" min="30" max="300" onblur="calculateTDEE()">
                 </div>
                 <div class="form-group">
                     <label for="targetDateInput">Data obiettivo</label>
@@ -1536,6 +1546,7 @@
             <label for="deficitSelect">Obiettivo Calorico (Deficit Limitato)</label>
             <div id="deficitSuggestionNote" class="macro-note" style="margin-bottom:4px;"></div>
             <select id="deficitSelect" onchange="calculateTDEE()">
+                <option value="" disabled selected>Seleziona l'obiettivo calorico</option>
                 <option value="0">Mantenimento (0%)</option>
                 <option value="10" selected>Deficit Leggero (-10%)</option>
                 <option value="15">Deficit Moderato (-15%)</option>
@@ -1593,15 +1604,7 @@
 
         <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--border);">
 
-        <h4>⚖️ Pesata Bisettimanale & Andamento</h4>
-        <div class="row" style="align-items: flex-end;">
-            <div class="form-group" style="flex: 1.2;">
-                <label for="currentWeightInput">Peso Rilevato (kg)</label>
-                <input type="number" id="currentWeightInput" placeholder="Es. 60.5" step="0.1" oninput="calculateTDEE()">
-            </div>
-            <button data-haptic="success" onclick="addWeightRecord()" style="flex: 1; margin-bottom: 8px; padding: 8px;">Registra Pesata</button>
-        </div>
-
+        <h4>📈 Andamento Peso</h4>
         <div>
             <label>Grafico Andamento Peso:</label>
             <div id="weightGoalProgressBox" style="display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;"></div>
@@ -1825,11 +1828,11 @@
 
     function defaultProfile(sex) {
         return {
-            age: sex === 'M' ? 40 : 30,
+            age: 0,
             birthDate: '',
-            height: sex === 'M' ? 175 : 165,
-            activity: 1.55,
-            deficitPct: 10,
+            height: '',
+            activity: '',
+            deficitPct: '',
             targetKcal: 0,
             weightHistory: [],
             dietGoal: 'loss',       // 'loss' | 'gain' | 'maintain' | 'recomp'
@@ -1846,7 +1849,7 @@
     let currentDayFoods = [];
     let currentDayActivities = [];
     let currentWaterMl = 0;
-    let waterTargetMl = 2000;
+    let waterTargetMl = null;
     let recipeDraftIngredients = [];
     let todayTotals = { p: 0, c: 0, g: 0 };
     let searchMatchesCache = {};
@@ -1885,7 +1888,28 @@
     }
 
     function getTodayStr() {
-        return new Date().toLocaleDateString('it-IT');
+        const d = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+    }
+
+    // Converte una data ISO (AAAA-MM-GG) in una data locale a mezzanotte,
+    // evitando gli scarti di un giorno dovuti all'interpretazione UTC di new Date('AAAA-MM-GG').
+    function parseLocalIsoDate(iso) {
+        if (typeof iso !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+        const [y, m, d] = iso.split('-').map(Number);
+        const date = new Date(y, m - 1, d);
+        if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+        date.setHours(0, 0, 0, 0);
+        return date;
+    }
+
+    function daysUntilIsoDate(iso) {
+        const target = parseLocalIsoDate(iso);
+        if (!target) return NaN;
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        return Math.round((target.getTime() - now.getTime()) / 86400000);
     }
 
     function safeParseArray(str) {
@@ -1927,7 +1951,7 @@
     // Età calcolata dalla data di nascita; senza data si usa l'età già salvata
     function getProfileAge(prof) {
         if (isValidBirthDate(prof.birthDate)) return computeAgeFromBirthDate(prof.birthDate);
-        return (typeof prof.age === 'number' && prof.age > 0) ? prof.age : 30;
+        return (typeof prof.age === 'number' && prof.age > 0) ? prof.age : null;
     }
 
     function todayIsoDate() {
@@ -2552,11 +2576,8 @@
         if (prof && prof.weightHistory.length > 0) {
             return prof.weightHistory[prof.weightHistory.length - 1].weight;
         }
-        if (sex === currentSex) {
-            const inputVal = parseFloat(document.getElementById('currentWeightInput').value);
-            if (!isNaN(inputVal) && inputVal > 0) return inputVal;
-        }
-        return sex === 'M' ? 75 : 60;
+        // Nessuna pesata registrata: restituisce null per bloccare i calcoli dipendenti dal peso
+        return null;
     }
 
     function getCurrentWeight() {
@@ -2674,7 +2695,7 @@
 
         currentSex = document.getElementById('sexSelect').value;
         appData.activeSex = currentSex;
-        saveDataToStorage();
+        // Il cambio profilo non conferma né salva su storage le modifiche ancora in bozza.
         loadProfileUI();
         loadDraftFromStorage();
     }
@@ -2698,18 +2719,19 @@
         // Data obiettivo: minimo domani
         const targetDateEl = document.getElementById('targetDateInput');
         if (targetDateEl) {
-            const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-            targetDateEl.min = tomorrow.toISOString().split('T')[0];
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            targetDateEl.min = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
         }
 
         document.getElementById('sexSelect').value = currentSex;
-        document.getElementById('height').value = prof.height;
-        document.getElementById('activity').value = prof.activity;
-        document.getElementById('deficitSelect').value = prof.deficitPct;
+        document.getElementById('height').value = prof.height ?? '';
+        document.getElementById('activity').value = prof.activity || '';
+        document.getElementById('deficitSelect').value = prof.deficitPct === '' ? '' : prof.deficitPct;
         document.getElementById('dietGoalSelect').value = prof.dietGoal || 'loss';
         document.getElementById('goalModeSelect').value = prof.goalMode || 'manual';
-        if (prof.targetWeight) document.getElementById('targetWeightInput').value = prof.targetWeight;
-        if (prof.targetDate) document.getElementById('targetDateInput').value = prof.targetDate;
+        document.getElementById('targetWeightInput').value = prof.targetWeight || '';
+        document.getElementById('targetDateInput').value = prof.targetDate || '';
         updateGoalUI();
 
         if (prof.weightHistory.length > 0) {
@@ -2810,6 +2832,7 @@
         }
 
         prof.birthDate = value;
+        saveDataToStorage();
         calculateTDEE();
         applyProfileLockUI();
     }
@@ -2825,11 +2848,145 @@
         applyProfileLockUI();
     }
 
+    function validateProfileBeforeConfirmation() {
+        const prof = appData.profiles[currentSex];
+        const currentWeight = getCurrentWeight();
+        const dietGoal = document.getElementById('dietGoalSelect')?.value || prof.dietGoal || 'loss';
+        const goalMode = document.getElementById('goalModeSelect')?.value || prof.goalMode || 'manual';
+        const targetWeightRaw = document.getElementById('targetWeightInput')?.value?.trim() || '';
+        const targetDate = document.getElementById('targetDateInput')?.value || '';
+
+        const errors = [];
+
+        // La pesata deve essere realmente registrata con il pulsante.
+        if (currentWeight === null) {
+            errors.push('⚠️ Registra prima una pesata nel campo "Peso Rilevato".');
+        }
+
+        const heightRaw = document.getElementById('height')?.value?.trim() || '';
+        const height = parseFloat(heightRaw);
+        if (!heightRaw || !Number.isFinite(height) || height < 100 || height > 250) {
+            errors.push("⚠️ Inserisci un'altezza valida compresa tra 100 e 250 cm.");
+        }
+
+        const activityRaw = document.getElementById('activity')?.value || '';
+        const actFactor = parseFloat(activityRaw);
+        if (!activityRaw || !Number.isFinite(actFactor)) {
+            errors.push('⚠️ Seleziona il livello di attività fisica.');
+        }
+
+        if (!isValidBirthDate(prof.birthDate)) {
+            errors.push('⚠️ Inserisci una data di nascita valida prima di confermare il profilo.');
+        }
+
+        if (goalMode === 'manual') {
+            const deficitVal = document.getElementById('deficitSelect')?.value || '';
+            if (!deficitVal) {
+                errors.push("⚠️ Seleziona l'obiettivo calorico.");
+            }
+        }
+
+        if (goalMode === 'auto' && dietGoal !== 'maintain' && dietGoal !== 'recomp') {
+            const targetWeight = parseFloat(targetWeightRaw);
+
+            if (!targetWeightRaw || !Number.isFinite(targetWeight) || targetWeight <= 0) {
+                errors.push('⚠️ Inserisci il peso obiettivo.');
+            }
+
+            if (!targetDate) {
+                errors.push('⚠️ Inserisci la data obiettivo.');
+            }
+
+            if (currentWeight !== null && Number.isFinite(targetWeight)) {
+                if (dietGoal === 'loss' && targetWeight >= currentWeight) {
+                    errors.push(`⚠️ Per la perdita di peso, il peso obiettivo deve essere inferiore al peso rilevato (${currentWeight} kg).`);
+                }
+                if (dietGoal === 'gain' && targetWeight <= currentWeight) {
+                    errors.push(`⚠️ Per l'aumento di massa, il peso obiettivo deve essere superiore al peso rilevato (${currentWeight} kg).`);
+                }
+
+                const age = getProfileAge(prof);
+                if (!Number.isFinite(age) || age <= 0) {
+                    // La data di nascita viene già segnalata sopra; non eseguire
+                    // ulteriori calcoli finché l'età non è disponibile.
+                } else {
+                let bmr = (10 * currentWeight) + (6.25 * height) - (5 * age);
+                bmr = (currentSex === 'M') ? bmr + 5 : bmr - 161;
+                const tdee = Math.round(bmr * actFactor);
+                const heightM = height / 100;
+                const minSafeWeight = Math.round(18.5 * heightM * heightM * 10) / 10;
+                const absoluteFloor = Math.round(minSafeWeight * 0.90 * 10) / 10;
+
+                if (dietGoal === 'loss' && targetWeight < absoluteFloor) {
+                    errors.push(`🚫 Il peso obiettivo (${targetWeight} kg) è al di sotto del limite di sicurezza (BMI 18.5 = ${minSafeWeight} kg).`);
+                }
+
+                if (targetDate) {
+                    const daysLeft = daysUntilIsoDate(targetDate);
+                    if (daysLeft < 7) {
+                        errors.push('⚠️ La data obiettivo è troppo vicina. Imposta una data di almeno 7 giorni nel futuro.');
+                    } else {
+                        const weightDiff = targetWeight - currentWeight;
+                        const dailyDelta = Math.round((weightDiff * 7700) / daysLeft);
+
+                        if (dietGoal === 'loss') {
+                            const maxDeficit = Math.round(tdee * 0.30);
+                            if (Math.abs(dailyDelta) > maxDeficit) {
+                                errors.push(`⚠️ Deficit/surplus troppo elevato per questo obiettivo (${Math.abs(dailyDelta)} kcal/g calcolati, limite sicuro: ${maxDeficit} kcal/g). Allontana la data o riduci il peso da perdere.`);
+                            }
+                        } else if (dietGoal === 'gain') {
+                            const maxSurplus = 750;
+                            if (dailyDelta > maxSurplus) {
+                                errors.push(`⚠️ Deficit/surplus troppo elevato per questo obiettivo (${dailyDelta} kcal/g calcolati, massimo consigliato: ${maxSurplus} kcal/g). Allontana la data o riduci il peso da guadagnare.`);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        }
+
+        if (currentWeight !== null && Number.isFinite(height) && Number.isFinite(actFactor) && Number.isFinite(getProfileAge(prof)) && goalMode === 'manual' && dietGoal === 'loss') {
+            const age = getProfileAge(prof);
+            let bmr = (10 * currentWeight) + (6.25 * height) - (5 * age);
+            bmr = (currentSex === 'M') ? bmr + 5 : bmr - 161;
+            const tdee = Math.round(bmr * actFactor);
+            const heightM = height / 100;
+            const minSafeWeight = Math.round(18.5 * heightM * heightM * 10) / 10;
+            const absoluteFloor = Math.round(minSafeWeight * 0.90 * 10) / 10;
+            const deficitVal = document.getElementById('deficitSelect')?.value || '';
+            let targetKcal = tdee;
+            if (deficitVal === 'surplus_250') targetKcal = tdee + 250;
+            else if (deficitVal === 'surplus_500') targetKcal = tdee + 500;
+            else if (deficitVal === 'surplus_750') targetKcal = tdee + 750;
+            else targetKcal = Math.round(tdee * (1 - (parseFloat(deficitVal) || 0) / 100));
+            if (currentWeight > absoluteFloor) {
+                let bmrFloor = (10 * absoluteFloor) + (6.25 * height) - (5 * age);
+                bmrFloor = (currentSex === 'M') ? bmrFloor + 5 : bmrFloor - 161;
+                const minKcal = Math.round(bmrFloor * actFactor * 0.90);
+                if (targetKcal < minKcal) {
+                    errors.push(`🚫 Il deficit impostato potrebbe portarti sotto il limite di sicurezza (BMI 18.5 = ${minSafeWeight} kg per la tua altezza). Target minimo calcolato: ${minKcal} kcal.`);
+                }
+            }
+        }
+
+        if (errors.length > 0) {
+            appAlert(errors.join('\n\n'));
+            return false;
+        }
+
+        return true;
+    }
+
     async function confirmProfile() {
         const firstTime = !appData.lockedSex;
         if (!firstTime && !appData.profileEditing) return;
 
         const prof = appData.profiles[currentSex];
+
+        // Tutti gli errori relativi a peso/data/deficit vengono mostrati solo
+        // quando l'utente preme "Conferma Profilo".
+        if (!validateProfileBeforeConfirmation()) return;
 
         if (prof.macroPreset === 'personalizzata' && !isValidSplit(readCustomMacroInputs())) {
             appAlert("⚠️ La somma delle percentuali macro deve essere 100% prima di confermare il profilo.");
@@ -2847,7 +3004,7 @@
         const okProfile = await appConfirm(message, { confirmText: 'Conferma' });
         if (!okProfile) return;
 
-        calculateTDEE(); // fissa i valori correnti
+        calculateTDEE(true); // applica e salva i valori correnti
         appData.lockedSex = currentSex;
         appData.activeSex = currentSex;
         appData.profileEditing = false;
@@ -3011,11 +3168,11 @@
 
     function computeWaterTargetFor(sex) {
         const weight = getWeightFor(sex);
-        let target = sex === 'M' ? 2500 : 2000;
+        if (weight === null) return null;
 
+        let target = sex === 'M' ? 2500 : 2000;
         if (weight > 80) target += 300;
         else if (weight < 55) target -= 200;
-
         return target;
     }
 
@@ -3032,18 +3189,29 @@
 
     function updateWaterDisplay() {
         const el = document.getElementById('waterCurrentDisplay');
-        if (el) el.textContent = `${currentWaterMl} / ${waterTargetMl} ml`;
+        if (el) el.textContent = waterTargetMl === null ? `${currentWaterMl} / — ml` : `${currentWaterMl} / ${waterTargetMl} ml`;
         updateProgressBars();
     }
 
-    function calculateTDEE() {
+    function calculateTDEE(save = false) {
         const prof = appData.profiles[currentSex];
         ensureMacroDefaults(prof);
 
-        const height = parseFloat(document.getElementById('height').value) || 165;
-        const actFactor = parseFloat(document.getElementById('activity').value) || 1.55;
+        const heightRaw = document.getElementById('height').value?.trim() || '';
+        const activityRaw = document.getElementById('activity').value || '';
+        const height = parseFloat(heightRaw);
+        const actFactor = parseFloat(activityRaw);
         const age = getProfileAge(prof);
         const currentWeight = getCurrentWeight();
+
+        // Nessuna pesata registrata: il calcolo viene semplicemente sospeso.
+        // Non mostrare avvisi durante la compilazione del profilo: gli eventuali
+        // errori/avvertimenti vengono mostrati esclusivamente al momento della
+        // conferma del profilo.
+        if (currentWeight === null || !Number.isFinite(height) || height <= 0 || !Number.isFinite(actFactor) || actFactor <= 0 || !Number.isFinite(age) || age <= 0) {
+            document.getElementById('targetResultMain').textContent = '—';
+            return;
+        }
 
         let bmr = (10 * currentWeight) + (6.25 * height) - (5 * age);
         bmr = (currentSex === 'M') ? bmr + 5 : bmr - 161;
@@ -3058,27 +3226,22 @@
         // Leggo i campi obiettivo
         const dietGoal = document.getElementById('dietGoalSelect')?.value || prof.dietGoal || 'loss';
         const goalMode = document.getElementById('goalModeSelect')?.value || prof.goalMode || 'manual';
-        let targetWeight = parseFloat(document.getElementById('targetWeightInput')?.value) || prof.targetWeight || 0;
-        const targetDate = document.getElementById('targetDateInput')?.value || prof.targetDate || '';
+        const targetWeightRaw = document.getElementById('targetWeightInput')?.value?.trim() || '';
+        const targetWeight = targetWeightRaw !== '' ? parseFloat(targetWeightRaw) : (save ? (prof.targetWeight || 0) : 0);
+        const targetDateInput = document.getElementById('targetDateInput')?.value || '';
+        const targetDate = targetDateInput || (save ? (prof.targetDate || '') : '');
 
         let targetKcal = tdee;
-        let autoWarning = '';
 
-        // Blocco sottopeso modalità automatica: corregge il campo peso target
-        if (goalMode === 'auto' && dietGoal === 'loss' && targetWeight > 0 && targetWeight < absoluteFloor) {
-            autoWarning = `🚫 Il peso obiettivo (${targetWeight} kg) porta al di sotto del limite di sicurezza (BMI 18.5 = ${minSafeWeight} kg per la tua altezza). Il target è stato corretto a ${absoluteFloor} kg.`;
-            targetWeight = absoluteFloor;
-            const twEl = document.getElementById('targetWeightInput');
-            if (twEl) twEl.value = absoluteFloor;
-        }
+        // Durante la compilazione non correggiamo automaticamente il peso obiettivo
+        // e non mostriamo finestre di avviso. La verifica viene fatta in confirmProfile().
 
         if (goalMode === 'auto' && dietGoal !== 'maintain') {
             if (dietGoal === 'recomp') {
                 targetKcal = tdee - 200;
             } else if (targetWeight > 0 && targetDate) {
-                const daysLeft = Math.round((new Date(targetDate) - new Date()) / 86400000);
+                const daysLeft = daysUntilIsoDate(targetDate);
                 if (daysLeft < 7) {
-                    autoWarning = autoWarning || `⚠️ La data obiettivo è troppo vicina. Imposta una data di almeno 7 giorni nel futuro.`;
                     targetKcal = tdee;
                 } else {
                     const weightDiff = targetWeight - currentWeight;
@@ -3088,13 +3251,11 @@
                     if (dietGoal === 'loss') {
                         const maxDeficit = Math.round(tdee * 0.30);
                         if (Math.abs(dailyDelta) > maxDeficit) {
-                            autoWarning = autoWarning || `⚠️ Deficit/surplus troppo elevato per questo obiettivo (${Math.abs(dailyDelta)} kcal/g calcolati, limite sicuro: ${maxDeficit} kcal/g). Allontana la data o riduci il peso da perdere.`;
                             targetKcal = tdee - maxDeficit;
                         }
                     } else if (dietGoal === 'gain') {
                         const maxSurplus = 750;
                         if (dailyDelta > maxSurplus) {
-                            autoWarning = autoWarning || `⚠️ Deficit/surplus troppo elevato per questo obiettivo (${dailyDelta} kcal/g calcolati, massimo consigliato: ${maxSurplus} kcal/g). Allontana la data o riduci il peso da guadagnare.`;
                             targetKcal = tdee + maxSurplus;
                         }
                     }
@@ -3120,7 +3281,6 @@
                 bmrFloor = (currentSex === 'M') ? bmrFloor + 5 : bmrFloor - 161;
                 const minKcal = Math.round(bmrFloor * actFactor * 0.90); // 10% sotto TDEE al peso floor
                 if (targetKcal < minKcal) {
-                    autoWarning = `🚫 Il deficit impostato potrebbe portarti sotto il limite di sicurezza (BMI 18.5 = ${minSafeWeight} kg per la tua altezza). Il target calorico è stato corretto al minimo sicuro (${minKcal} kcal).`;
                     targetKcal = minKcal;
                 }
             }
@@ -3128,24 +3288,29 @@
 
         targetKcal = Math.max(1000, Math.round(targetKcal));
 
-        // Salvo nel profilo
-        prof.age = age;
-        prof.height = height;
-        prof.activity = actFactor;
-        prof.targetKcal = targetKcal;
-        prof.dietGoal = dietGoal;
-        prof.goalMode = goalMode;
-        prof.targetWeight = targetWeight;
-        prof.targetDate = targetDate;
+        // I valori vengono applicati definitivamente solo quando save=true
+        // (cioè durante la conferma del profilo). Durante la compilazione
+        // calculateTDEE aggiorna soltanto l'anteprima, senza salvare il profilo.
+        if (save) {
+            prof.age = age;
+            prof.height = height;
+            prof.activity = actFactor;
+            prof.targetKcal = targetKcal;
+            prof.dietGoal = dietGoal;
+            prof.goalMode = goalMode;
+            prof.targetWeight = targetWeight;
+            prof.targetDate = targetDate;
+            prof.deficitPct = document.getElementById('deficitSelect')?.value || prof.deficitPct;
+            saveDataToStorage();
+        }
 
-        saveDataToStorage();
-
-        // Avviso sottopeso ha priorità, poi altri avvisi
-        if (autoWarning) setTimeout(() => appAlert(autoWarning), 200);
+        // Gli eventuali avvisi non vengono mostrati qui: calculateTDEE() può
+        // essere richiamata mentre l'utente sta ancora digitando. La validazione
+        // con messaggi avviene esclusivamente in confirmProfile().
 
         // Aggiorna il display del target (il target dinamico è base + attività già in memoria)
         const dynamicTarget = getDynamicTarget();
-        document.getElementById('targetResultMain').textContent = `${dynamicTarget}`;
+        document.getElementById('targetResultMain').textContent = Number.isFinite(dynamicTarget) ? `${dynamicTarget}` : '—';
         calculateWaterTarget();
         updateMacroTargetsDisplay();
         updateProgressBars();
@@ -3185,8 +3350,8 @@
     function addWeightRecord() {
         const inputField = document.getElementById('currentWeightInput');
         const val = parseFloat(inputField.value);
-        if (!val || isNaN(val)) {
-            appAlert("Inserisci un peso valido.");
+        if (!Number.isFinite(val) || val < 30 || val > 300) {
+            appAlert("Inserisci un peso valido compreso tra 30 e 300 kg.");
             return;
         }
 
@@ -3332,6 +3497,15 @@
         const box = document.getElementById('weightGoalProgressBox');
         if (!box) return;
         const prof = appData.profiles[currentSex];
+
+        // Non mostrare se modalità manuale o scopo non pertinente al peso
+        const goalMode = prof.goalMode || 'manual';
+        const dietGoal = prof.dietGoal || 'loss';
+        if (goalMode !== 'auto' || !['loss','gain'].includes(dietGoal)) {
+            box.style.display = 'none';
+            return;
+        }
+
         if (!prof || !prof.targetWeight || prof.weightHistory.length === 0) {
             box.style.display = 'none';
             return;
@@ -3396,7 +3570,7 @@
     // Grammi target teorici in base al target calorico (già comprensivo del deficit scelto)
     function getMacroTargets(prof) {
         const split = getMacroSplit(prof);
-        const kcal = prof.targetKcal || 1850;
+        const kcal = (prof && prof.targetKcal > 0) ? prof.targetKcal : 0;
         const pKcal = kcal * split.p / 100;
         const cKcal = kcal * split.c / 100;
         const gKcal = kcal * split.g / 100;
@@ -3448,7 +3622,6 @@
         const prof = appData.profiles[currentSex];
         prof.macroPreset = document.getElementById('macroPresetSelect').value;
         ensureMacroDefaults(prof);
-        saveDataToStorage();
         renderMacroSection();
         updateProgressBars();
     }
@@ -3491,7 +3664,6 @@
 
         if (valid) {
             prof.customSplit = { p: values.p, c: values.c, g: values.g };
-            saveDataToStorage();
             updateMacroTargetsDisplay();
             updateProgressBars();
         }
@@ -3531,6 +3703,7 @@
         if (!prof) return;
         const t = getMacroTargets(prof);
 
+        const hasTarget = t.kcal > 0;
         const items = [
             { key: 'p', pct: t.split.p, grams: t.pG, kcal: t.pKcal },
             { key: 'c', pct: t.split.c, grams: t.cG, kcal: t.cKcal },
@@ -3549,15 +3722,17 @@
             grid.innerHTML = items.map(i => `
                 <div class="macro-gram-box" style="border-top: 3px solid ${MACRO_COLORS[i.key]};">
                     <div class="macro-gram-label">${MACRO_LABELS[i.key]}</div>
-                    <div class="macro-gram-value">${Math.round(i.grams)} g</div>
-                    <div class="macro-gram-sub">${Math.round(i.kcal)} kcal</div>
+                    <div class="macro-gram-value">${hasTarget ? `${Math.round(i.grams)} g` : '—'}</div>
+                    <div class="macro-gram-sub">${hasTarget ? `${Math.round(i.kcal)} kcal` : '—'}</div>
                 </div>
             `).join('');
         }
 
         const note = document.getElementById('macroNote');
         if (note) {
-            note.textContent = `Grammi teorici calcolati sul target di ${t.kcal} kcal (proteine e carboidrati 4 kcal/g, grassi 9 kcal/g).`;
+            note.textContent = hasTarget
+                ? `Grammi teorici calcolati sul target di ${t.kcal} kcal (proteine e carboidrati 4 kcal/g, grassi 9 kcal/g).`
+                : 'Completa e conferma il profilo per calcolare i grammi teorici dei macronutrienti.';
         }
 
         drawMacroPie();
@@ -3659,7 +3834,14 @@
         const prof = appData.profiles[currentSex];
         if (!prof) return;
         const split = getMacroSplit(prof);
-        const kcal = dynamicKcal || getDynamicTarget();
+        const kcal = Number.isFinite(dynamicKcal) ? dynamicKcal : getDynamicTarget();
+        if (!(kcal > 0)) {
+            setProgress('p', 0, 0, 'goal', 'g');
+            setProgress('c', 0, 0, 'limit', 'g');
+            setProgress('g', 0, 0, 'limit', 'g');
+            setProgress('w', currentWaterMl, waterTargetMl || 0, 'goal', 'ml');
+            return;
+        }
 
         const pKcal = kcal * split.p / 100;
         const cKcal = kcal * split.c / 100;
@@ -3683,6 +3865,10 @@
         }
 
         const currentWeight = getCurrentWeight();
+        if (currentWeight === null) {
+            appAlert("⚠️ Registra prima una pesata per poter calcolare le calorie dell'attività.");
+            return;
+        }
         const kcal = Math.round((met * 3.5 * currentWeight / 200) * duration);
 
         currentDayActivities.push({
@@ -3707,9 +3893,9 @@
     // Unico punto dove questo calcolo avviene — evita il loop tra calculateTDEE e updateActivitiesSummary
     function getDynamicTarget() {
         const prof = appData.profiles[currentSex];
-        const base = (prof && prof.targetKcal > 0) ? prof.targetKcal : 1850;
+        if (!prof || !(prof.targetKcal > 0)) return null;
         const burned = currentDayActivities.reduce((s, a) => s + (a.kcal || 0), 0);
-        return base + burned;
+        return prof.targetKcal + burned;
     }
 
     function updateActivitiesSummary() {
@@ -3730,7 +3916,7 @@
         document.getElementById('activityBurnEstimate').textContent = `Totale Bruciato Oggi: ~${totKcal} kcal`;
 
         const dynamicTarget = getDynamicTarget();
-        document.getElementById('targetResultMain').textContent = `${dynamicTarget}`;
+        document.getElementById('targetResultMain').textContent = Number.isFinite(dynamicTarget) ? `${dynamicTarget}` : '—';
 
         // Aggiorna anche le barre macro con il target dinamico
         updateProgressBarsWithTarget(dynamicTarget);
@@ -3937,16 +4123,17 @@
     function generateFeedback(totalKcal, targetKcal, waterMl, activities, waterTarget) {
         const totBurned = (activities || []).reduce((acc, a) => acc + (a.kcal || 0), 0);
         const netKcal = totalKcal - totBurned;
-        const target = targetKcal || 1850;
-        const isWaterOk = waterMl >= waterTarget;
+        const target = Number.isFinite(targetKcal) && targetKcal > 0 ? targetKcal : null;
+        const isWaterOk = Number.isFinite(waterTarget) && waterTarget > 0 && waterMl >= waterTarget;
 
         if (totalKcal === 0) return "Registra i pasti per calcolare il bilancio nutrizionale.";
+        if (target === null) return `📊 Profilo non ancora completo: il bilancio calorico verrà valutato dopo la conferma del profilo.${waterNote}`;
 
         const waterNote = isWaterOk ? " 💧 Ottima idratazione!" : " 💧 Ricorda di bere più acqua.";
 
-        if (netKcal < target * LOW_INTAKE_RATIO) {
+        if (target !== null && netKcal < target * LOW_INTAKE_RATIO) {
             return `⚠️ <strong>Deficit calorico molto elevato:</strong> se hai registrato tutto, presta attenzione e cerca di mangiare un po' di più domani.${waterNote}`;
-        } else if (netKcal <= target) {
+        } else if (target !== null && netKcal <= target) {
             return `🌟 <strong>Ottimo lavoro, continua così!</strong>${waterNote}`;
         } else {
             return `💪 <strong>Cerca di fare meglio domani.</strong>${waterNote}`;
@@ -3958,8 +4145,9 @@
     function buildEntry(date, sex, foods, activities, waterMl, existingId, targets) {
         const prof = appData.profiles[sex] || {};
         const t = targets || {};
-        const targetKcal = ((typeof t.targetKcal === 'number' && t.targetKcal > 0) ? t.targetKcal : (prof.targetKcal || 0)) || 1850;
-        const waterTarget = (typeof t.waterTargetMl === 'number' && t.waterTargetMl > 0) ? t.waterTargetMl : computeWaterTargetFor(sex);
+        const targetKcal = (typeof t.targetKcal === 'number' && t.targetKcal > 0) ? t.targetKcal : ((prof.targetKcal > 0) ? prof.targetKcal : 0);
+        const computedWaterTarget = computeWaterTargetFor(sex);
+        const waterTarget = (typeof t.waterTargetMl === 'number' && t.waterTargetMl > 0) ? t.waterTargetMl : (computedWaterTarget || (sex === 'M' ? 2500 : 2000));
         const totBurned = activities.reduce((acc, a) => acc + (a.kcal || 0), 0);
 
         let totKcal = 0, totP = 0, totG = 0, totC = 0, totZ = 0, totSat = 0, totSale = 0;
