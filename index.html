@@ -364,6 +364,38 @@
             }
         }
 
+        @media (max-width: 600px) {
+            .icon-nav-bar {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 8px;
+            }
+
+            .icon-nav-bar > div:first-child {
+                text-align: center;
+            }
+
+            .icon-nav-bar h2 {
+                font-size: 1.05rem;
+                margin: 0 0 4px;
+            }
+
+            .icon-btn-group {
+                width: 100%;
+                gap: 4px;
+            }
+
+            .icon-btn {
+                min-width: 0;
+                padding: 6px 2px;
+                font-size: 0.64rem;
+            }
+
+            .icon-btn span.icon {
+                font-size: 1rem;
+            }
+        }
+
 
         button {
             background-color: var(--primary);
@@ -435,6 +467,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 8px;
+            min-width: 0;
             background: var(--header-bg);
             border: 1px solid var(--border);
             border-radius: var(--radius);
@@ -452,6 +486,8 @@
         .icon-btn-group {
             display: flex;
             gap: 6px;
+            flex: 1 1 auto;
+            min-width: 0;
         }
 
         .icon-btn {
@@ -466,8 +502,11 @@
             padding: 4px 8px;
             font-size: 0.7rem;
             cursor: pointer;
-            min-width: 48px;
+            width: auto;
+            min-width: 0;
+            flex: 1 1 0;
             backdrop-filter: blur(4px);
+            touch-action: manipulation;
         }
 
         .icon-btn span.icon {
@@ -1165,6 +1204,10 @@
                 <span class="icon">🍲</span>
                 <span>Pasti</span>
             </button>
+            <button class="icon-btn" data-haptic="tap" onclick="openReportDrawer()" title="Report">
+                <span class="icon">📊</span>
+                <span>Report</span>
+            </button>
             <button class="icon-btn" data-haptic="tap" onclick="toggleDrawer('historyDrawer')" title="Storico">
                 <span class="icon">📋</span>
                 <span>Storico</span>
@@ -1699,14 +1742,6 @@
         </div>
         <button data-haptic="success" onclick="addNewFoodToDatabase()" style="width: 100%; margin-top: 6px; padding: 8px;">Salva Alimento</button>
 
-        <hr style="margin: 6px 0; border: 0; border-top: 1px solid var(--border);">
-
-        <h4>📥 Backup & Ripristino</h4>
-        <div class="row">
-            <button class="btn-secondary" data-haptic="tap" onclick="exportBackup()">📥 Scarica Backup</button>
-            <button class="btn-secondary" data-haptic="tap" onclick="document.getElementById('importBackupInput').click()">📤 Carica Backup</button>
-            <input type="file" id="importBackupInput" accept=".json" style="display:none" onchange="importBackup(event)">
-        </div>
     </div>
 </div>
 
@@ -1814,19 +1849,38 @@
     </div>
 </div>
 
-<!-- DRAWER 4: STORICO -->
+<!-- DRAWER 4: REPORT -->
+<div id="reportDrawer" class="drawer-overlay" onclick="closeDrawerOnBg(event, 'reportDrawer')">
+    <div class="drawer-content">
+        <div class="drawer-header">
+            <h3>📊 Report nutrizionale</h3>
+            <button class="close-btn" data-haptic="tap" onclick="toggleDrawer('reportDrawer')">✕</button>
+        </div>
+        <div id="biweeklyReportContainer"></div>
+    </div>
+</div>
+
+<!-- DRAWER 5: STORICO + BACKUP -->
 <div id="historyDrawer" class="drawer-overlay" onclick="closeDrawerOnBg(event, 'historyDrawer')">
     <div class="drawer-content">
         <div class="drawer-header">
             <h3>📋 Storico Giornaliero</h3>
             <div style="display: flex; gap: 8px; align-items: center;">
-                <button data-haptic="tap" onclick="renderBiweeklyReport(true)" class="btn-secondary">📊 Report 2 settimane</button>
                 <button data-haptic="warn" onclick="clearHistory()" class="btn-danger">Cancella Tutto</button>
                 <button class="close-btn" data-haptic="tap" onclick="toggleDrawer('historyDrawer')">✕</button>
             </div>
         </div>
-        <div id="biweeklyReportContainer"></div>
         <div id="historyList"></div>
+
+        <hr style="margin: 14px 0 10px; border: 0; border-top: 1px solid var(--border);">
+        <div style="background: var(--bg-color); border: 1px solid var(--border); padding: 10px; border-radius: 8px;">
+            <h4 style="margin:0 0 8px;">📥 Backup & Ripristino</h4>
+            <div class="row">
+                <button class="btn-secondary" data-haptic="tap" onclick="exportBackup()">📥 Scarica Backup</button>
+                <button class="btn-secondary" data-haptic="tap" onclick="document.getElementById('importBackupInput').click()">📤 Carica Backup</button>
+                <input type="file" id="importBackupInput" accept=".json" style="display:none" onchange="importBackup(event)">
+            </div>
+        </div>
     </div>
 </div>
 
@@ -4424,11 +4478,21 @@
             </div>`;
 
         if (openIfAvailable) {
-            const drawer = document.getElementById('historyDrawer');
-            if (drawer && drawer.style.display !== 'flex') drawer.style.display = 'flex';
+            openReportDrawer();
             setTimeout(() => container.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
         }
         return report;
+    }
+
+    function openReportDrawer() {
+        const drawer = document.getElementById('reportDrawer');
+        if (!drawer) return;
+        renderBiweeklyReport(false);
+        drawer.style.display = 'flex';
+        setTimeout(() => {
+            const container = document.getElementById('biweeklyReportContainer');
+            if (container) container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 80);
     }
 
     function shouldOfferBiweeklyReport() {
@@ -4443,8 +4507,6 @@
     function renderHistory() {
         const entries = appData.entries;
         const historyList = document.getElementById('historyList');
-        renderBiweeklyReport(false);
-
         if (entries.length === 0) {
             historyList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 20px;">Nessuna registrazione presente nello storico.</p>';
             return;
