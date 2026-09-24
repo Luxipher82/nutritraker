@@ -1456,12 +1456,49 @@
         </div>
 
         <div class="form-group">
+            <label for="dietGoalSelect">🎯 Scopo della dieta</label>
+            <select id="dietGoalSelect" onchange="onDietGoalChange()">
+                <option value="loss">📉 Perdita di peso</option>
+                <option value="gain">💪 Aumento di massa</option>
+                <option value="maintain">⚖️ Mantenimento</option>
+                <option value="recomp">🔄 Ricomposizione corporea</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="goalModeSelect">⚙️ Modalità calcolo calorico</label>
+            <select id="goalModeSelect" onchange="onGoalModeChange()">
+                <option value="manual">✏️ Manuale</option>
+                <option value="auto">🤖 Automatico</option>
+            </select>
+        </div>
+
+        <!-- Obiettivo peso + data (solo in modalità auto e scopo != maintain) -->
+        <div id="weightGoalBox" style="display:none;">
+            <div class="row">
+                <div class="form-group">
+                    <label for="targetWeightInput">Peso obiettivo (kg)</label>
+                    <input type="number" id="targetWeightInput" placeholder="Es. 75" step="0.1" min="30" max="300" oninput="calculateTDEE()">
+                </div>
+                <div class="form-group">
+                    <label for="targetDateInput">Data obiettivo</label>
+                    <input type="date" id="targetDateInput" onchange="calculateTDEE()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Deficit manuale (solo in modalità manual) -->
+        <div id="manualDeficitBox">
             <label for="deficitSelect">Obiettivo Calorico (Deficit Limitato)</label>
+            <div id="deficitSuggestionNote" class="macro-note" style="margin-bottom:4px;"></div>
             <select id="deficitSelect" onchange="calculateTDEE()">
                 <option value="0">Mantenimento (0%)</option>
                 <option value="10" selected>Deficit Leggero (-10%)</option>
                 <option value="15">Deficit Moderato (-15%)</option>
                 <option value="20">Deficit Massimo (-20%)</option>
+                <option value="surplus_250">Surplus +250 kcal</option>
+                <option value="surplus_500">Surplus +500 kcal</option>
+                <option value="surplus_750">Surplus +750 kcal</option>
             </select>
         </div>
 
@@ -1728,13 +1765,17 @@
 
     function defaultProfile(sex) {
         return {
-            age: sex === 'M' ? 40 : 30,   // età di riserva, usata solo finché non c'è la data di nascita
-            birthDate: '',                // formato AAAA-MM-GG
+            age: sex === 'M' ? 40 : 30,
+            birthDate: '',
             height: sex === 'M' ? 175 : 165,
             activity: 1.55,
             deficitPct: 10,
             targetKcal: 0,
             weightHistory: [],
+            dietGoal: 'loss',       // 'loss' | 'gain' | 'maintain' | 'recomp'
+            goalMode: 'manual',     // 'manual' | 'auto'
+            targetWeight: 0,        // kg obiettivo
+            targetDate: '',         // AAAA-MM-GG
             ...newMacroFields()
         };
     }
@@ -2159,7 +2200,11 @@
                 activity: num(p.activity, d.activity),
                 deficitPct: num(p.deficitPct, d.deficitPct),
                 targetKcal: num(p.targetKcal, 0),
-                weightHistory: history
+                weightHistory: history,
+                dietGoal: ['loss','gain','maintain','recomp'].includes(p.dietGoal) ? p.dietGoal : 'loss',
+                goalMode: ['manual','auto'].includes(p.goalMode) ? p.goalMode : 'manual',
+                targetWeight: num(p.targetWeight, 0),
+                targetDate: p.targetDate || ''
             };
             ensureMacroDefaults(out.profiles[sex]);
         });
@@ -2561,6 +2606,10 @@
             oldProf.height = parseFloat(document.getElementById('height').value) || oldProf.height;
             oldProf.activity = parseFloat(document.getElementById('activity').value) || oldProf.activity;
             oldProf.deficitPct = parseFloat(document.getElementById('deficitSelect').value) || oldProf.deficitPct;
+            oldProf.dietGoal = document.getElementById('dietGoalSelect').value || oldProf.dietGoal;
+            oldProf.goalMode = document.getElementById('goalModeSelect').value || oldProf.goalMode;
+            oldProf.targetWeight = parseFloat(document.getElementById('targetWeightInput').value) || oldProf.targetWeight;
+            oldProf.targetDate = document.getElementById('targetDateInput').value || oldProf.targetDate;
         }
 
         currentSex = document.getElementById('sexSelect').value;
@@ -2586,10 +2635,22 @@
         birthInput.max = todayIsoDate();
         birthInput.value = prof.birthDate || '';
 
+        // Data obiettivo: minimo domani
+        const targetDateEl = document.getElementById('targetDateInput');
+        if (targetDateEl) {
+            const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+            targetDateEl.min = tomorrow.toISOString().split('T')[0];
+        }
+
         document.getElementById('sexSelect').value = currentSex;
         document.getElementById('height').value = prof.height;
         document.getElementById('activity').value = prof.activity;
         document.getElementById('deficitSelect').value = prof.deficitPct;
+        document.getElementById('dietGoalSelect').value = prof.dietGoal || 'loss';
+        document.getElementById('goalModeSelect').value = prof.goalMode || 'manual';
+        if (prof.targetWeight) document.getElementById('targetWeightInput').value = prof.targetWeight;
+        if (prof.targetDate) document.getElementById('targetDateInput').value = prof.targetDate;
+        updateGoalUI();
 
         if (prof.weightHistory.length > 0) {
             document.getElementById('currentWeightInput').value = prof.weightHistory[prof.weightHistory.length - 1].weight;
@@ -2627,7 +2688,8 @@
         const birthInput = document.getElementById('birthDate');
         if (birthInput) birthInput.disabled = locked && hasBirth;
 
-        ['activity', 'deficitSelect', 'macroPresetSelect', 'macroInputP', 'macroInputC', 'macroInputG', 'macroBalanceBtn'].forEach(id => {
+        ['activity', 'deficitSelect', 'macroPresetSelect', 'macroInputP', 'macroInputC', 'macroInputG', 'macroBalanceBtn',
+         'dietGoalSelect', 'goalModeSelect', 'targetWeightInput', 'targetDateInput'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.disabled = softLocked;
         });
@@ -2919,25 +2981,74 @@
 
         const height = parseFloat(document.getElementById('height').value) || 165;
         const actFactor = parseFloat(document.getElementById('activity').value) || 1.55;
-        const deficitPct = parseFloat(document.getElementById('deficitSelect').value) || 0;
-
-        // L'età si calcola dalla data di nascita (se presente), altrimenti resta quella salvata
         const age = getProfileAge(prof);
         const currentWeight = getCurrentWeight();
 
         let bmr = (10 * currentWeight) + (6.25 * height) - (5 * age);
         bmr = (currentSex === 'M') ? bmr + 5 : bmr - 161;
-
         const tdee = Math.round(bmr * actFactor);
-        const targetKcal = Math.round(tdee * (1 - (deficitPct / 100)));
 
+        // Leggo i campi obiettivo
+        const dietGoal = document.getElementById('dietGoalSelect')?.value || prof.dietGoal || 'loss';
+        const goalMode = document.getElementById('goalModeSelect')?.value || prof.goalMode || 'manual';
+        const targetWeight = parseFloat(document.getElementById('targetWeightInput')?.value) || prof.targetWeight || 0;
+        const targetDate = document.getElementById('targetDateInput')?.value || prof.targetDate || '';
+
+        let targetKcal = tdee;
+        let autoWarning = '';
+
+        if (goalMode === 'auto' && dietGoal !== 'maintain') {
+            if (dietGoal === 'recomp') {
+                // Ricomposizione: deficit fisso -200 kcal, tetto -300
+                targetKcal = tdee - 200;
+            } else if (targetWeight > 0 && targetDate) {
+                const daysLeft = Math.max(1, Math.round((new Date(targetDate) - new Date()) / 86400000));
+                const weightDiff = targetWeight - currentWeight; // negativo = perdere, positivo = guadagnare
+                // 1 kg grasso ≈ 7700 kcal
+                const dailyDelta = Math.round((weightDiff * 7700) / daysLeft);
+                targetKcal = tdee + dailyDelta;
+
+                if (dietGoal === 'loss') {
+                    const maxDeficit = Math.round(tdee * 0.30);
+                    if (Math.abs(dailyDelta) > maxDeficit) {
+                        autoWarning = `⚠️ Il ritmo calcolato (${Math.abs(dailyDelta)} kcal/g) supera il 30% del TDEE (limite sicuro: ${maxDeficit} kcal/g). Il target è stato limitato.`;
+                        targetKcal = tdee - maxDeficit;
+                    }
+                } else if (dietGoal === 'gain') {
+                    const maxSurplus = 750;
+                    if (dailyDelta > maxSurplus) {
+                        autoWarning = `⚠️ Il surplus calcolato (${dailyDelta} kcal/g) supera il massimo consigliato (${maxSurplus} kcal/g). Il target è stato limitato.`;
+                        targetKcal = tdee + maxSurplus;
+                    }
+                }
+            }
+        } else {
+            // Modalità manuale
+            const deficitVal = document.getElementById('deficitSelect')?.value || '0';
+            let deficitPct = 0;
+            if (deficitVal === 'surplus_250') { targetKcal = tdee + 250; }
+            else if (deficitVal === 'surplus_500') { targetKcal = tdee + 500; }
+            else if (deficitVal === 'surplus_750') { targetKcal = tdee + 750; }
+            else { deficitPct = parseFloat(deficitVal) || 0; targetKcal = Math.round(tdee * (1 - deficitPct / 100)); }
+            prof.deficitPct = parseFloat(deficitVal) || 0;
+        }
+
+        targetKcal = Math.max(1000, Math.round(targetKcal));
+
+        // Salvo nel profilo
         prof.age = age;
         prof.height = height;
         prof.activity = actFactor;
-        prof.deficitPct = deficitPct;
         prof.targetKcal = targetKcal;
+        prof.dietGoal = dietGoal;
+        prof.goalMode = goalMode;
+        prof.targetWeight = targetWeight;
+        prof.targetDate = targetDate;
 
         saveDataToStorage();
+
+        // Avviso auto se necessario
+        if (autoWarning) setTimeout(() => appAlert(autoWarning), 200);
 
         document.getElementById('targetResultMain').textContent = `${targetKcal}`;
         calculateWaterTarget();
@@ -2945,7 +3056,36 @@
         updateMacroTargetsDisplay();
         updateProgressBars();
         updateAgeInfo();
+        updateGoalUI();
     }
+
+    // Aggiorna la visibilità delle sezioni UI in base allo scopo e alla modalità
+    function updateGoalUI() {
+        const dietGoal = document.getElementById('dietGoalSelect')?.value || 'loss';
+        const goalMode = document.getElementById('goalModeSelect')?.value || 'manual';
+        const weightGoalBox = document.getElementById('weightGoalBox');
+        const manualDeficitBox = document.getElementById('manualDeficitBox');
+        const suggestionNote = document.getElementById('deficitSuggestionNote');
+
+        // Box peso/data: visibile solo in auto e se non è mantenimento
+        if (weightGoalBox) weightGoalBox.style.display = (goalMode === 'auto' && dietGoal !== 'maintain' && dietGoal !== 'recomp') ? 'block' : 'none';
+        // Box deficit manuale: visibile solo in modalità manuale
+        if (manualDeficitBox) manualDeficitBox.style.display = goalMode === 'manual' ? 'block' : 'none';
+
+        // Suggerimento range per modalità manuale
+        if (suggestionNote) {
+            const hints = {
+                loss:     '💡 Suggerito: -10% / -20% (Deficit Leggero o Moderato)',
+                gain:     '💡 Suggerito: Surplus +250 / +500 kcal',
+                maintain: '💡 Suggerito: Mantenimento (0%)',
+                recomp:   '💡 Suggerito: Deficit Leggero -10% / -15%'
+            };
+            suggestionNote.textContent = hints[dietGoal] || '';
+        }
+    }
+
+    function onDietGoalChange() { updateGoalUI(); calculateTDEE(); }
+    function onGoalModeChange() { updateGoalUI(); calculateTDEE(); }
 
     function addWeightRecord() {
         const inputField = document.getElementById('currentWeightInput');
