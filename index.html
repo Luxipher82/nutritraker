@@ -1602,7 +1602,7 @@
         </div>
 
         <!-- Obiettivo peso + data (solo in modalità auto e scopo != maintain) -->
-        <div id="weightGoalBox" style="display:none;">
+        <div id="weightGoalBox" style="display:block;">
             <div class="row">
                 <div class="form-group">
                     <label for="targetWeightInput">Peso obiettivo (kg)</label>
@@ -1613,6 +1613,7 @@
                     <input type="date" id="targetDateInput" onchange="calculateTDEE()">
                 </div>
             </div>
+            <div id="weightGoalModeNote" class="macro-note">Il peso obiettivo può essere compilato in qualsiasi momento. Viene usato dal calcolo automatico quando selezioni la modalità automatica.</div>
         </div>
 
         <!-- Deficit manuale (solo in modalità manual) -->
@@ -1679,7 +1680,7 @@
         <hr style="margin: 8px 0; border: 0; border-top: 1px solid var(--border);">
 
         <h4>📈 Andamento Peso</h4>
-        <div>
+        <div id="weightChartSection" style="display:block;">
             <label>Grafico Andamento Peso:</label>
             <div id="weightGoalProgressBox" style="display:none;background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;"></div>
             <canvas id="weightChart"></canvas>
@@ -2821,6 +2822,13 @@
         document.getElementById('targetDateInput').value = prof.targetDate || '';
         updateGoalUI();
 
+        // Queste sezioni fanno parte stabilmente del profilo: non devono dipendere
+        // dai dati già presenti nel localStorage del dispositivo.
+        const weightGoalSection = document.getElementById('weightGoalBox');
+        if (weightGoalSection) weightGoalSection.style.display = 'block';
+        const weightChartSection = document.getElementById('weightChartSection');
+        if (weightChartSection) weightChartSection.style.display = 'block';
+
         if (prof.weightHistory.length > 0) {
             document.getElementById('currentWeightInput').value = prof.weightHistory[prof.weightHistory.length - 1].weight;
         } else {
@@ -3420,7 +3428,7 @@
         const suggestionNote = document.getElementById('deficitSuggestionNote');
 
         // Box peso/data: visibile solo in auto e se non è mantenimento
-        if (weightGoalBox) weightGoalBox.style.display = (goalMode === 'auto' && dietGoal !== 'maintain' && dietGoal !== 'recomp') ? 'block' : 'none';
+        if (weightGoalBox) weightGoalBox.style.display = 'block';
         // Box deficit manuale: visibile solo in modalità manuale
         if (manualDeficitBox) manualDeficitBox.style.display = goalMode === 'manual' ? 'block' : 'none';
 
