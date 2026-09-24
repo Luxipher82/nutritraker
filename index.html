@@ -776,6 +776,37 @@
             line-height: 1.35;
         }
 
+        .biweekly-report {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 14px;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+        }
+
+        .biweekly-report h4 { margin: 0 0 4px; font-size: 0.95rem; }
+        .biweekly-period { color: var(--text-muted); font-size: 0.75rem; margin-bottom: 10px; }
+        .biweekly-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 7px;
+            margin-bottom: 10px;
+        }
+        .biweekly-stat {
+            background: var(--bg-color);
+            border-radius: 9px;
+            padding: 8px;
+        }
+        .biweekly-stat-label { color: var(--text-muted); font-size: 0.68rem; }
+        .biweekly-stat-value { font-weight: 700; font-size: 0.84rem; margin-top: 2px; }
+        .biweekly-table { width: 100%; border-collapse: collapse; font-size: 0.72rem; margin: 5px 0 10px; }
+        .biweekly-table th, .biweekly-table td { padding: 5px 4px; border-bottom: 1px solid var(--border); text-align: right; }
+        .biweekly-table th:first-child, .biweekly-table td:first-child { text-align: left; }
+        .biweekly-section-title { font-size: 0.76rem; font-weight: 700; margin: 10px 0 4px; }
+        .biweekly-comment { font-size: 0.76rem; line-height: 1.45; background: var(--bg-color); padding: 9px; border-radius: 8px; }
+        .biweekly-note { color: var(--text-muted); font-size: 0.68rem; line-height: 1.35; margin-top: 7px; }
+
         canvas {
             width: 100%;
             height: 160px;
@@ -1789,10 +1820,12 @@
         <div class="drawer-header">
             <h3>📋 Storico Giornaliero</h3>
             <div style="display: flex; gap: 8px; align-items: center;">
+                <button data-haptic="tap" onclick="renderBiweeklyReport(true)" class="btn-secondary">📊 Report 2 settimane</button>
                 <button data-haptic="warn" onclick="clearHistory()" class="btn-danger">Cancella Tutto</button>
                 <button class="close-btn" data-haptic="tap" onclick="toggleDrawer('historyDrawer')">✕</button>
             </div>
         </div>
+        <div id="biweeklyReportContainer"></div>
         <div id="historyList"></div>
     </div>
 </div>
@@ -3368,6 +3401,12 @@
         drawWeightChart();
         updateWeightGoalProgress();
         showToast(`✅ Pesata di ${val} kg registrata!`);
+
+        // Dopo una nuova pesata, se è trascorso circa un periodo bisettimanale,
+        // mostra automaticamente il report delle due settimane complete precedenti.
+        if (shouldOfferBiweeklyReport()) {
+            setTimeout(() => renderBiweeklyReport(true), 350);
+        }
     }
 
     function checkWeightReminder() {
@@ -4194,9 +4233,200 @@
         };
     }
 
+    /* ===== REPORT NUTRIZIONALE BISETTIMANALE ===== */
+    function parseItalianDate(dateStr) {
+        if (typeof dateStr !== 'string' || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) return null;
+        const [d, m, y] = dateStr.split('/').map(Number);
+        const date = new Date(y, m - 1, d);
+        if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+        date.setHours(0, 0, 0, 0);
+        return date;
+    }
+
+    function formatDateRangeIt(date) {
+        if (!date) return '—';
+        const pad = n => String(n).padStart(2, '0');
+        return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+    }
+
+    function getCompletedBiweeklyPeriod(referenceDate = new Date()) {
+        const ref = new Date(referenceDate);
+        ref.setHours(0, 0, 0, 0);
+        const day = ref.getDay(); // 0 domenica, 1 lunedì
+        const daysSinceMonday = (day + 6) % 7;
+        const currentMonday = new Date(ref);
+        currentMonday.setDate(currentMonday.getDate() - daysSinceMonday);
+        // Il report considera sempre due settimane complete lunedì-domenica.
+        const end = new Date(currentMonday);
+        end.setDate(end.getDate() - 1); // domenica precedente
+        const start = new Date(end);
+        start.setDate(start.getDate() - 13); // lunedì di due settimane prima
+        return { start, end };
+    }
+
+    function averageReportField(entries, field) {
+        const values = entries.map(e => Number(e[field])).filter(v => Number.isFinite(v));
+        return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+    }
+
+    function reportDateEntries(entries, start, end) {
+        return entries.filter(entry => {
+            const d = parseItalianDate(entry.date);
+            return d && d >= start && d <= end;
+        });
+    }
+
+    function getWeightAroundPeriod(prof, start, end, referenceDate) {
+        const history = (prof.weightHistory || [])
+            .map(w => ({ ...w, dateObj: parseItalianDate(w.date) || (Number.isFinite(w.timestamp) ? new Date(w.timestamp) : null) }))
+            .filter(w => w.dateObj && Number.isFinite(Number(w.weight)))
+            .sort((a, b) => a.dateObj - b.dateObj);
+        const beforeOrAtStart = history.filter(w => w.dateObj <= start).pop();
+        const beforeOrAtReference = history.filter(w => w.dateObj <= referenceDate).pop();
+        return { startWeight: beforeOrAtStart || null, endWeight: beforeOrAtReference || null };
+    }
+
+    function buildBiweeklyComment(report, prof) {
+        const comments = [];
+        if (report.daysLogged === 0) return 'Non ci sono giornate del diario registrate nelle due settimane considerate: il report non può fornire una valutazione nutrizionale affidabile.';
+
+        if (report.avgKcal !== null && report.avgTargetKcal !== null) {
+            const diff = report.avgKcal - report.avgTargetKcal;
+            if (Math.abs(diff) < 75) comments.push(`L'apporto calorico medio è stato vicino al target del periodo (${diff >= 0 ? '+' : ''}${Math.round(diff)} kcal/giorno).`);
+            else comments.push(`L'apporto calorico medio si è discostato dal target di circa ${Math.abs(Math.round(diff))} kcal/giorno (${diff > 0 ? 'sopra' : 'sotto'} il target).`);
+        } else {
+            comments.push('Il target calorico non è disponibile per tutte le giornate, quindi il confronto calorico è parziale.');
+        }
+
+        const macroParts = [];
+        if (report.avgP !== null) macroParts.push(`proteine ${report.avgP.toFixed(1)} g`);
+        if (report.avgC !== null) macroParts.push(`carboidrati ${report.avgC.toFixed(1)} g`);
+        if (report.avgG !== null) macroParts.push(`grassi ${report.avgG.toFixed(1)} g`);
+        if (macroParts.length) comments.push(`Le medie dei macronutrienti sono: ${macroParts.join(', ')}.`);
+
+        if (report.avgZ !== null || report.avgSat !== null || report.avgSale !== null) {
+            const micro = [];
+            if (report.avgZ !== null) micro.push(`zuccheri ${report.avgZ.toFixed(1)} g`);
+            if (report.avgSat !== null) micro.push(`saturi ${report.avgSat.toFixed(1)} g`);
+            if (report.avgSale !== null) micro.push(`sale ${report.avgSale.toFixed(2)} g`);
+            comments.push(`Per i micro-nutrienti monitorati, le medie giornaliere sono ${micro.join(', ')}.`);
+        }
+
+        if (report.weightStart && report.weightEnd) {
+            const delta = report.weightEnd.weight - report.weightStart.weight;
+            const weeks = Math.max(1, (report.weightEnd.dateObj - report.weightStart.dateObj) / (7 * 86400000));
+            const pace = delta / weeks;
+            const direction = delta > 0.05 ? 'aumento' : delta < -0.05 ? 'diminuzione' : 'variazione minima';
+            comments.push(`Nel periodo di pesate disponibili si osserva una ${direction} di ${Math.abs(delta).toFixed(1)} kg, pari a circa ${Math.abs(pace).toFixed(2)} kg/settimana.`);
+            if (prof.targetWeight > 0) {
+                const remaining = prof.targetWeight - report.weightEnd.weight;
+                if (Math.abs(remaining) < 0.2) comments.push('Il peso registrato è molto vicino al peso obiettivo impostato.');
+                else comments.push(`Al termine del confronto risultano ${Math.abs(remaining).toFixed(1)} kg ${remaining > 0 ? 'da raggiungere' : 'oltre'} rispetto al peso obiettivo di ${prof.targetWeight} kg.`);
+            }
+        } else {
+            comments.push("Per commentare l'andamento del peso servono almeno due pesate, una prima dell'inizio del periodo e una entro la data di riferimento.");
+        }
+        return comments.join(' ');
+    }
+
+    function renderBiweeklyReport(openIfAvailable = false, referenceDate = new Date()) {
+        const container = document.getElementById('biweeklyReportContainer');
+        if (!container) return null;
+        const period = getCompletedBiweeklyPeriod(referenceDate);
+        const entries = reportDateEntries(appData.entries.filter(e => e.profileSex === currentSex), period.start, period.end);
+        const prof = appData.profiles[currentSex] || {};
+        const weightInfo = getWeightAroundPeriod(prof, period.start, period.end, new Date(referenceDate));
+
+        const report = {
+            start: period.start, end: period.end, entries,
+            daysLogged: entries.length,
+            avgKcal: averageReportField(entries, 'totalKcal'),
+            avgP: averageReportField(entries, 'totalProt'),
+            avgC: averageReportField(entries, 'totalCarb'),
+            avgG: averageReportField(entries, 'totalFat'),
+            avgZ: averageReportField(entries, 'totalZuccheri'),
+            avgSat: averageReportField(entries, 'totalSaturi'),
+            avgSale: averageReportField(entries, 'totalSale'),
+            avgTargetKcal: averageReportField(entries, 'targetKcal'),
+            weightStart: weightInfo.startWeight,
+            weightEnd: weightInfo.endWeight
+        };
+
+        const week1End = new Date(period.start); week1End.setDate(week1End.getDate() + 6);
+        const week1 = entries.filter(e => { const d = parseItalianDate(e.date); return d && d <= week1End; });
+        const week2 = entries.filter(e => { const d = parseItalianDate(e.date); return d && d > week1End; });
+        const avg = (arr, field) => { const v = averageReportField(arr, field); return v === null ? '—' : v.toFixed(field === 'totalSale' ? 2 : 1); };
+        const kcal = (v) => v === null ? '—' : `${Math.round(v)} kcal`;
+        const targetText = report.avgTargetKcal === null ? '—' : `${Math.round(report.avgTargetKcal)} kcal`;
+        const weightDelta = report.weightStart && report.weightEnd ? report.weightEnd.weight - report.weightStart.weight : null;
+        const weightHtml = report.weightStart && report.weightEnd
+            ? `${report.weightStart.weight.toFixed(1)} kg → ${report.weightEnd.weight.toFixed(1)} kg <strong>${weightDelta > 0 ? '+' : ''}${weightDelta.toFixed(1)} kg</strong>`
+            : 'Dati di pesata insufficienti';
+        const targetWeightHtml = prof.targetWeight > 0 ? `${prof.targetWeight.toFixed(1)} kg` : 'Non impostato';
+        const comment = buildBiweeklyComment(report, prof);
+
+        container.innerHTML = `
+            <div class="biweekly-report">
+                <h4>📊 Report nutrizionale bisettimanale</h4>
+                <div class="biweekly-period">${formatDateRangeIt(period.start)} → ${formatDateRangeIt(period.end)} · ${report.daysLogged}/14 giorni di diario registrati</div>
+
+                <div class="biweekly-grid">
+                    <div class="biweekly-stat"><div class="biweekly-stat-label">🔥 Kcal medie</div><div class="biweekly-stat-value">${kcal(report.avgKcal)}</div></div>
+                    <div class="biweekly-stat"><div class="biweekly-stat-label">🎯 Target medio</div><div class="biweekly-stat-value">${targetText}</div></div>
+                    <div class="biweekly-stat"><div class="biweekly-stat-label">🥩 Proteine</div><div class="biweekly-stat-value">${report.avgP === null ? '—' : report.avgP.toFixed(1) + ' g'}</div></div>
+                    <div class="biweekly-stat"><div class="biweekly-stat-label">🍞 Carboidrati</div><div class="biweekly-stat-value">${report.avgC === null ? '—' : report.avgC.toFixed(1) + ' g'}</div></div>
+                    <div class="biweekly-stat"><div class="biweekly-stat-label">🥑 Grassi</div><div class="biweekly-stat-value">${report.avgG === null ? '—' : report.avgG.toFixed(1) + ' g'}</div></div>
+                    <div class="biweekly-stat"><div class="biweekly-stat-label">⚖️ Peso</div><div class="biweekly-stat-value">${weightHtml}</div></div>
+                </div>
+
+                <div class="biweekly-section-title">📈 Confronto tra le due settimane</div>
+                <table class="biweekly-table">
+                    <thead><tr><th>Media</th><th>Settimana 1</th><th>Settimana 2</th></tr></thead>
+                    <tbody>
+                        <tr><td>🔥 Kcal</td><td>${kcal(averageReportField(week1, 'totalKcal'))}</td><td>${kcal(averageReportField(week2, 'totalKcal'))}</td></tr>
+                        <tr><td>🥩 Proteine</td><td>${avg(week1,'totalProt')} g</td><td>${avg(week2,'totalProt')} g</td></tr>
+                        <tr><td>🍞 Carboidrati</td><td>${avg(week1,'totalCarb')} g</td><td>${avg(week2,'totalCarb')} g</td></tr>
+                        <tr><td>🥑 Grassi</td><td>${avg(week1,'totalFat')} g</td><td>${avg(week2,'totalFat')} g</td></tr>
+                        <tr><td>🍬 Zuccheri</td><td>${avg(week1,'totalZuccheri')} g</td><td>${avg(week2,'totalZuccheri')} g</td></tr>
+                        <tr><td>🥓 Saturi</td><td>${avg(week1,'totalSaturi')} g</td><td>${avg(week2,'totalSaturi')} g</td></tr>
+                        <tr><td>🧂 Sale</td><td>${avg(week1,'totalSale')} g</td><td>${avg(week2,'totalSale')} g</td></tr>
+                    </tbody>
+                </table>
+
+                <div class="biweekly-section-title">🔬 Micro-nutrienti · media giornaliera</div>
+                <div class="biweekly-grid">
+                    <div class="biweekly-stat"><div class="biweekly-stat-label">🍬 Zuccheri</div><div class="biweekly-stat-value">${report.avgZ === null ? '—' : report.avgZ.toFixed(1) + ' g'}</div></div>
+                    <div class="biweekly-stat"><div class="biweekly-stat-label">🥓 Saturi</div><div class="biweekly-stat-value">${report.avgSat === null ? '—' : report.avgSat.toFixed(1) + ' g'}</div></div>
+                    <div class="biweekly-stat"><div class="biweekly-stat-label">🧂 Sale</div><div class="biweekly-stat-value">${report.avgSale === null ? '—' : report.avgSale.toFixed(2) + ' g'}</div></div>
+                    <div class="biweekly-stat"><div class="biweekly-stat-label">🎯 Peso obiettivo</div><div class="biweekly-stat-value">${targetWeightHtml}</div></div>
+                </div>
+
+                <div class="biweekly-section-title">💬 Commento del periodo</div>
+                <div class="biweekly-comment">${comment}</div>
+                <div class="biweekly-note">Le medie sono calcolate sui giorni effettivamente presenti nello storico; i giorni senza registrazione non vengono considerati come giornate a zero. Il confronto del peso usa le pesate disponibili, quindi può non coincidere esattamente con i confini del periodo.</div>
+            </div>`;
+
+        if (openIfAvailable) {
+            const drawer = document.getElementById('historyDrawer');
+            if (drawer && drawer.style.display !== 'flex') drawer.style.display = 'flex';
+            setTimeout(() => container.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80);
+        }
+        return report;
+    }
+
+    function shouldOfferBiweeklyReport() {
+        const prof = appData.profiles[currentSex] || {};
+        const history = (prof.weightHistory || []).slice().sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        if (history.length < 2) return false;
+        const latest = history[history.length - 1];
+        const previous = history[history.length - 2];
+        return Number.isFinite(latest.timestamp) && Number.isFinite(previous.timestamp) && (latest.timestamp - previous.timestamp) >= 13 * 86400000;
+    }
+
     function renderHistory() {
         const entries = appData.entries;
         const historyList = document.getElementById('historyList');
+        renderBiweeklyReport(false);
 
         if (entries.length === 0) {
             historyList.innerHTML = '<p style="color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 20px;">Nessuna registrazione presente nello storico.</p>';
