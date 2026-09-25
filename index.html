@@ -2691,9 +2691,12 @@
                 return res.arrayBuffer();
             })
             .then(buffer => {
-                parseExcelArrayBuffer(buffer);
+                const result = parseExcelArrayBuffer(buffer);
                 if (showSuccessAlert) {
-                    showToast("✅ Database sincronizzato ed aggiornato con successo!");
+                    const skippedNote = (result && result.skipped > 0)
+                        ? ` (${result.skipped} scartati per dati mancanti)`
+                        : '';
+                    showToast(`✅ Database sincronizzato: ${result ? result.imported : 0} alimenti${skippedNote}`);
                 }
             })
             .catch(() => {
@@ -2739,33 +2742,45 @@
         const idxPzMisura = getIdx(['pz/misura', 'pzmisura']);
 
         const importedFoods = [];
+        let skippedIncomplete = 0;
         for (let i = headerIndex + 1; i < rows.length; i++) {
             const row = rows[i];
             if (!row || row.every(val => val === "")) continue;
 
+            const isEmpty = (idx) => idx === -1 || row[idx] === undefined || row[idx] === null || String(row[idx]).trim() === "";
+
             const parseVal = (idx) => {
-                if (idx === -1 || row[idx] === undefined || row[idx] === null || row[idx] === "") return 0;
+                if (isEmpty(idx)) return 0;
                 let valStr = String(row[idx]).replace(',', '.');
                 return parseFloat(valStr) || 0;
             };
 
             const nomeStr = idxNome !== -1 ? String(row[idxNome] || '').trim() : '';
-            if (nomeStr !== "") {
-                importedFoods.push({
-                    verified: true,
-                    marca: idxMarca !== -1 ? String(row[idxMarca] || '').trim() : '',
-                    nome: nomeStr,
-                    kcal: parseVal(idxKcal),
-                    c: parseVal(idxC),
-                    g: parseVal(idxG),
-                    p: parseVal(idxP),
-                    zuccheri: parseVal(idxZ),
-                    saturi: parseVal(idxS),
-                    sale: parseVal(idxSale),
-                    porzione_g: idxPorzione !== -1 && parseVal(idxPorzione) > 0 ? parseVal(idxPorzione) : 100,
-                    pzMisura: idxPzMisura !== -1 ? String(row[idxPzMisura] || '').trim() : ''
-                });
+            if (nomeStr === "") continue;
+
+            // Scarta le righe con dati nutrizionali incompleti: kcal mancante,
+            // oppure tutti e tre i macro principali mancanti (dato inutilizzabile anche con kcal presente)
+            const kcalMissing = isEmpty(idxKcal);
+            const allMacrosMissing = isEmpty(idxP) && isEmpty(idxC) && isEmpty(idxG);
+            if (kcalMissing || allMacrosMissing) {
+                skippedIncomplete++;
+                continue;
             }
+
+            importedFoods.push({
+                verified: true,
+                marca: idxMarca !== -1 ? String(row[idxMarca] || '').trim() : '',
+                nome: nomeStr,
+                kcal: parseVal(idxKcal),
+                c: parseVal(idxC),
+                g: parseVal(idxG),
+                p: parseVal(idxP),
+                zuccheri: parseVal(idxZ),
+                saturi: parseVal(idxS),
+                sale: parseVal(idxSale),
+                porzione_g: idxPorzione !== -1 && parseVal(idxPorzione) > 0 ? parseVal(idxPorzione) : 100,
+                pzMisura: idxPzMisura !== -1 ? String(row[idxPzMisura] || '').trim() : ''
+            });
         }
 
         if (importedFoods.length > 0) {
@@ -2775,6 +2790,8 @@
             rebuildFoodDatabase();
             updateTodaySummary();
         }
+
+        return { imported: importedFoods.length, skipped: skippedIncomplete };
     }
 
     function switchProfile() {
