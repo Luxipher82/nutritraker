@@ -2222,6 +2222,7 @@
             const p = Number(food.p || 0).toFixed(1);
             const g = Number(food.g || 0).toFixed(1);
             const c = Number(food.c || 0).toFixed(1);
+            const pzMisura = food.pzMisura ? String(food.pzMisura).trim() : '';
 
             return `
                 <div class="food-search-item" onclick="useFoodFromFullSearch(${index})">
@@ -2232,6 +2233,7 @@
                             ${food.verified ? '<span class="food-inline-verified" title="Alimento verificato">✓</span>' : ''}
                             ${favorite ? '<span class="food-inline-favorite" title="Preferito">★</span>' : ''}
                         </div>
+                        ${pzMisura ? `<div class="template-search-portion">${escapeHtml(pzMisura)}</div>` : ''}
                         <div class="food-search-meta">
                             <span><strong>${kcal}</strong> kcal</span>
                             <span><strong>C</strong> ${c}g</span>
@@ -2711,7 +2713,7 @@
         let headerIndex = -1;
         for (let i = 0; i < rows.length; i++) {
             const rowStr = rows[i].join(" ").toLowerCase();
-            if (rowStr.includes("alimento") || rowStr.includes("nome")) {
+            if (rowStr.includes("alimento") || rowStr.includes("nome") || rowStr.includes("prodotto")) {
                 headerIndex = i;
                 break;
             }
@@ -2725,7 +2727,7 @@
         const getIdx = (keys) => headers.findIndex(h => keys.some(k => h.includes(k)));
 
         const idxMarca = getIdx(['marca']);
-        const idxNome = getIdx(['alimento', 'nome']);
+        const idxNome = getIdx(['alimento', 'nome', 'prodotto']);
         const idxKcal = getIdx(['kcal', 'calorie']);
         const idxC = getIdx(['carboidrati']);
         const idxG = getIdx(['grassi']);
@@ -2734,6 +2736,7 @@
         const idxS = getIdx(['saturi', 'saturo']);
         const idxSale = getIdx(['sale', 'sodio']);
         const idxPorzione = getIdx(['porzione', 'pesoperporzione']);
+        const idxPzMisura = getIdx(['pz/misura', 'pzmisura']);
 
         const importedFoods = [];
         for (let i = headerIndex + 1; i < rows.length; i++) {
@@ -2759,7 +2762,8 @@
                     zuccheri: parseVal(idxZ),
                     saturi: parseVal(idxS),
                     sale: parseVal(idxSale),
-                    porzione_g: idxPorzione !== -1 && parseVal(idxPorzione) > 0 ? parseVal(idxPorzione) : 100
+                    porzione_g: idxPorzione !== -1 && parseVal(idxPorzione) > 0 ? parseVal(idxPorzione) : 100,
+                    pzMisura: idxPzMisura !== -1 ? String(row[idxPzMisura] || '').trim() : ''
                 });
             }
         }
@@ -5173,7 +5177,7 @@
         const matches=FOOD_DATABASE.filter(food=>{const text=`${food.marca||''} ${food.nome||''}`.toLowerCase();const queryOk=!q||text.includes(q);const filterOk=foodSearchFilter==='all'||(foodSearchFilter==='verified'&&food.verified===true)||(foodSearchFilter==='added'&&food.verified===false)||(foodSearchFilter==='favorite'&&isFoodFavorite(food));return queryOk&&filterOk;});
         const shown=matches.slice(0,200); count.textContent=`${matches.length} alimento${matches.length===1?'':'i'}${matches.length>200?' · mostrati i primi 200':''}`;
         if(!shown.length){list.innerHTML='<div class="food-empty">Nessun alimento corrispondente al filtro o alla ricerca.</div>';return;}
-        list.innerHTML=shown.map(food=>{const index=FOOD_DATABASE.indexOf(food),favorite=isFoodFavorite(food),brand=food.marca&&String(food.marca).trim()&&String(food.marca).trim().toLowerCase()!=='web'?String(food.marca).trim():'—',name=food.nome?String(food.nome).trim():'Alimento',kcal=Number(food.kcal||0),pp=Number(food.p||0).toFixed(1),gg=Number(food.g||0).toFixed(1),cc=Number(food.c||0).toFixed(1);return `<div class="food-search-item" onclick="useFoodFromFullSearch(${index})"><div class="food-search-main"><div class="food-search-brand">${escapeHtml(brand)}</div><div class="food-search-name">${escapeHtml(name)} ${food.verified?'<span class="food-inline-verified">✓</span>':''}${favorite?'<span class="food-inline-favorite">★</span>':''}</div><div class="food-search-meta"><strong>${kcal}</strong> kcal · <strong>C</strong> ${cc}g · <strong>G</strong> ${gg}g · <strong>P</strong> ${pp}g</div></div><button type="button" class="food-favorite-btn ${favorite?'is-favorite':''}" onclick="event.stopPropagation();toggleFoodFavoriteByIndex(${index})">${favorite?'★':'☆'}</button><button type="button" class="food-search-select-btn" onclick="event.stopPropagation();useFoodFromFullSearch(${index})">Usa</button></div>`;}).join('');
+        list.innerHTML=shown.map(food=>{const index=FOOD_DATABASE.indexOf(food),favorite=isFoodFavorite(food),brand=food.marca&&String(food.marca).trim()&&String(food.marca).trim().toLowerCase()!=='web'?String(food.marca).trim():'—',name=food.nome?String(food.nome).trim():'Alimento',kcal=Number(food.kcal||0),pp=Number(food.p||0).toFixed(1),gg=Number(food.g||0).toFixed(1),cc=Number(food.c||0).toFixed(1),pzMisura=food.pzMisura?String(food.pzMisura).trim():'';return `<div class="food-search-item" onclick="useFoodFromFullSearch(${index})"><div class="food-search-main"><div class="food-search-brand">${escapeHtml(brand)}</div><div class="food-search-name">${escapeHtml(name)} ${food.verified?'<span class="food-inline-verified">✓</span>':''}${favorite?'<span class="food-inline-favorite">★</span>':''}</div>${pzMisura?`<div class="template-search-portion">${escapeHtml(pzMisura)}</div>`:''}<div class="food-search-meta"><strong>${kcal}</strong> kcal · <strong>C</strong> ${cc}g · <strong>G</strong> ${gg}g · <strong>P</strong> ${pp}g</div></div><button type="button" class="food-favorite-btn ${favorite?'is-favorite':''}" onclick="event.stopPropagation();toggleFoodFavoriteByIndex(${index})">${favorite?'★':'☆'}</button><button type="button" class="food-search-select-btn" onclick="event.stopPropagation();useFoodFromFullSearch(${index})">Usa</button></div>`;}).join('');
     };
 
     function setFoodSearchFilter(filter){foodSearchFilter=['all','verified','added','favorite'].includes(filter)?filter:'all';document.querySelectorAll('.food-filter').forEach(btn=>btn.classList.remove('active'));const a=document.getElementById(`foodFilter-${foodSearchFilter}`);if(a)a.classList.add('active');renderFoodSearchResults();}
