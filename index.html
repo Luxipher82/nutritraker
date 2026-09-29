@@ -4068,6 +4068,68 @@
         updateProgressBarsWithTarget(dynamicTarget);
     }
 
+    /* ===== RICERCA ALIMENTI: ORDINE PER PERTINENZA E FREQUENZA D'USO ===== */
+    // true = a parità di pertinenza i preferiti (★) passano prima dei più usati
+    const FOOD_SEARCH_FAVORITES_FIRST = false;
+
+    // Quante volte ogni alimento del database è stato registrato (giorni salvati + giornata in corso)
+    function getFoodUsageCounts() {
+        const counts = {};
+        const countedIds = new Set();
+        const add = (f) => {
+            const key = f && f.sourceFoodKey;
+            if (!key) return;
+            counts[key] = (counts[key] || 0) + 1;
+        };
+        (appData.entries || []).forEach(entry => {
+            (entry.rawFoods || []).forEach(f => {
+                if (f && f.id !== undefined) countedIds.add(f.id);
+                add(f);
+            });
+        });
+        // La giornata in corso può essere già salvata: evita di contare due volte gli stessi alimenti
+        (currentDayFoods || []).forEach(f => {
+            if (f && f.id !== undefined && countedIds.has(f.id)) return;
+            add(f);
+        });
+        return counts;
+    }
+
+    // Ordina i risultati: 0 nome uguale, 1 nome che inizia, 2 parola del nome che inizia,
+    // 3 parola di marca/testo completo che inizia, 4 testo dentro un'altra parola.
+    // A parità: (preferiti, se attivo) -> più registrati -> ordine alfabetico.
+    function rankFoodMatches(list, query) {
+        const q = String(query || '').toLowerCase().trim();
+        if (!q || !Array.isArray(list) || list.length < 2) return list;
+        const esc = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const wordStart = new RegExp('(^|[^\\p{L}\\p{N}])' + esc, 'u');
+        const usage = getFoodUsageCounts();
+        const scored = list.map((food, pos) => {
+            const nome = String(food.nome || '').toLowerCase().trim();
+            const marca = String(food.marca || '').toLowerCase().trim();
+            const full = (marca + ' ' + nome).trim();
+            let tier;
+            if (nome === q) tier = 0;
+            else if (nome.startsWith(q)) tier = 1;
+            else if (wordStart.test(nome)) tier = 2;
+            else if (wordStart.test(full)) tier = 3;
+            else tier = 4;
+            return {
+                food, pos, tier, nome,
+                fav: (FOOD_SEARCH_FAVORITES_FIRST && isFoodFavorite(food)) ? 1 : 0,
+                used: usage[foodKey(food)] || 0
+            };
+        });
+        scored.sort((a, b) =>
+            a.tier - b.tier ||
+            b.fav - a.fav ||
+            b.used - a.used ||
+            a.nome.localeCompare(b.nome, 'it') ||
+            a.pos - b.pos
+        );
+        return scored.map(x => x.food);
+    }
+
     function searchFood(meal) {
         const inputEl = document.getElementById(`foodInput-${meal}`);
         const query = inputEl.value.toLowerCase().trim();
@@ -4084,12 +4146,12 @@
             return;
         }
 
-        const matches = FOOD_DATABASE.filter(f => {
+        const matches = rankFoodMatches(FOOD_DATABASE.filter(f => {
             const marcaStr = String(f.marca || '').toLowerCase();
             const nomeStr = String(f.nome || '').toLowerCase();
             const fullText = (marcaStr + " " + nomeStr).trim();
             return fullText.includes(query) || nomeStr.includes(query) || marcaStr.includes(query);
-        });
+        }), query);
 
         if (matches.length > 0) {
             // I risultati sono richiamati per posizione: nessun testo del nome finisce dentro l'attributo onclick
@@ -5191,7 +5253,7 @@
             list.innerHTML=matches.length?matches.slice(0,200).map(m=>renderTemplateSearchCard('meal',m,appData.compositeMeals.indexOf(m))).join(''):'<div class="food-empty">Nessun pasto completo corrispondente.</div>';
             return;
         }
-        const matches=FOOD_DATABASE.filter(food=>{const text=`${food.marca||''} ${food.nome||''}`.toLowerCase();const queryOk=!q||text.includes(q);const filterOk=foodSearchFilter==='all'||(foodSearchFilter==='verified'&&food.verified===true)||(foodSearchFilter==='added'&&food.verified===false)||(foodSearchFilter==='favorite'&&isFoodFavorite(food));return queryOk&&filterOk;});
+        const matches=rankFoodMatches(FOOD_DATABASE.filter(food=>{const text=`${food.marca||''} ${food.nome||''}`.toLowerCase();const queryOk=!q||text.includes(q);const filterOk=foodSearchFilter==='all'||(foodSearchFilter==='verified'&&food.verified===true)||(foodSearchFilter==='added'&&food.verified===false)||(foodSearchFilter==='favorite'&&isFoodFavorite(food));return queryOk&&filterOk;}),q);
         const shown=matches.slice(0,200); count.textContent=`${matches.length} alimento${matches.length===1?'':'i'}${matches.length>200?' · mostrati i primi 200':''}`;
         if(!shown.length){list.innerHTML='<div class="food-empty">Nessun alimento corrispondente al filtro o alla ricerca.</div>';return;}
         list.innerHTML=shown.map(food=>{const index=FOOD_DATABASE.indexOf(food),favorite=isFoodFavorite(food),brand=food.marca&&String(food.marca).trim()&&String(food.marca).trim().toLowerCase()!=='web'?String(food.marca).trim():'—',name=food.nome?String(food.nome).trim():'Alimento',kcal=Number(food.kcal||0),pp=Number(food.p||0).toFixed(1),gg=Number(food.g||0).toFixed(1),cc=Number(food.c||0).toFixed(1),pzMisura=food.pzMisura?String(food.pzMisura).trim():'';return `<div class="food-search-item" onclick="useFoodFromFullSearch(${index})"><div class="food-search-main"><div class="food-search-brand">${escapeHtml(brand)}</div><div class="food-search-name">${escapeHtml(name)} ${food.verified?'<span class="food-inline-verified">✓</span>':''}${favorite?'<span class="food-inline-favorite">★</span>':''}</div>${pzMisura?`<div class="template-search-portion">${escapeHtml(pzMisura)}</div>`:''}<div class="food-search-meta"><strong>${kcal}</strong> kcal · <strong>C</strong> ${cc}g · <strong>G</strong> ${gg}g · <strong>P</strong> ${pp}g</div></div><button type="button" class="food-favorite-btn ${favorite?'is-favorite':''}" onclick="event.stopPropagation();toggleFoodFavoriteByIndex(${index})">${favorite?'★':'☆'}</button><button type="button" class="food-search-select-btn" onclick="event.stopPropagation();useFoodFromFullSearch(${index})">Usa</button></div>`;}).join('');
