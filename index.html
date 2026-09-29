@@ -8,7 +8,7 @@
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" id="metaThemeColor" content="#ec4899">
     <!-- Libreria SheetJS per leggere file Excel (.xlsx) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <style>
         /* TEMA UOMO: Header Fucsia, Corpo Azzurro */
         :root {
@@ -1898,6 +1898,24 @@
 <script>
     const GITHUB_EXCEL_URL = 'https://raw.githubusercontent.com/Luxipher82/nutritraker/main/database.xlsx';
 
+    /* Scrittura protetta su localStorage: se lo spazio è finito o il browser blocca il salvataggio,
+       avvisa invece di fallire in silenzio (l'avviso compare al massimo una volta ogni 30 secondi) */
+    let _storageWarnedAt = 0;
+    function safeSetItem(key, value) {
+        try {
+            localStorage.setItem(key, value);
+            return true;
+        } catch (err) {
+            console.error('Salvataggio non riuscito:', key, err);
+            const now = Date.now();
+            if (now - _storageWarnedAt > 30000) {
+                _storageWarnedAt = now;
+                try { appAlert('⚠️ Impossibile salvare i dati sul dispositivo (spazio esaurito o salvataggio bloccato dal browser). Da Impostazioni > Backup & Ripristino scarica un backup e libera spazio.'); } catch (e) {}
+            }
+            return false;
+        }
+    }
+
     /* ===== RIPARTIZIONE MACRO: PRESET E COSTANTI ===== */
     // Percentuali sulle kcal totali. Proteine e carboidrati = 4 kcal/g, grassi = 9 kcal/g.
     const KCAL_PER_GRAM = { p: 4, c: 4, g: 9 };
@@ -1951,6 +1969,7 @@
     let recipeDraftIngredients = [];
     let todayTotals = { p: 0, c: 0, g: 0 };
     let searchMatchesCache = {};
+    let chosenFoodByInput = {};  // alimento scelto dalla lista per ogni campo (evita di ritrovarlo solo per nome)
     let foodSearchFilter = 'all';
     let foodSearchTargetMeal = null;
     let favoriteFoodKeys = safeParseArray(localStorage.getItem('favoriteFoodsDatabase')) || [];
@@ -2129,7 +2148,7 @@
         if (pos >= 0) favoriteFoodKeys.splice(pos, 1);
         else favoriteFoodKeys.push(key);
 
-        localStorage.setItem('favoriteFoodsDatabase', JSON.stringify(favoriteFoodKeys));
+        safeSetItem('favoriteFoodsDatabase', JSON.stringify(favoriteFoodKeys));
         renderFoodSearchResults();
     }
 
@@ -2172,91 +2191,6 @@
         foodSearchTargetMeal = null;
     }
 
-    function setFoodSearchFilter(filter) {
-        foodSearchFilter = ['all', 'verified', 'added', 'favorite'].includes(filter) ? filter : 'all';
-        document.querySelectorAll('.food-filter').forEach(btn => btn.classList.remove('active'));
-        const active = document.getElementById(`foodFilter-${foodSearchFilter}`);
-        if (active) active.classList.add('active');
-        renderFoodSearchResults();
-    }
-
-    function renderFoodSearchResults() {
-        const input = document.getElementById('foodSearchInput');
-        const list = document.getElementById('foodSearchResults');
-        const count = document.getElementById('foodSearchCount');
-        if (!input || !list || !count) return;
-
-        const query = input.value.toLowerCase().trim();
-
-        let matches = FOOD_DATABASE.filter(food => {
-            const text = `${food.marca || ''} ${food.nome || ''}`.toLowerCase();
-            const queryOk = !query || text.includes(query);
-            const filterOk =
-                foodSearchFilter === 'all' ||
-                (foodSearchFilter === 'verified' && food.verified === true) ||
-                (foodSearchFilter === 'added' && food.verified === false) ||
-                (foodSearchFilter === 'favorite' && isFoodFavorite(food));
-            return queryOk && filterOk;
-        });
-
-        // Senza ricerca mostra comunque una lista utile, ma limitata per evitare una pagina enorme.
-        const MAX_RESULTS = 200;
-        const shown = matches.slice(0, MAX_RESULTS);
-
-        count.textContent = `${matches.length} alimento${matches.length === 1 ? '' : 'i'}`
-            + (matches.length > MAX_RESULTS ? ` · mostrati i primi ${MAX_RESULTS}` : '');
-
-        if (shown.length === 0) {
-            list.innerHTML = '<div class="food-empty">Nessun alimento corrispondente al filtro o alla ricerca.</div>';
-            return;
-        }
-
-        list.innerHTML = shown.map(food => {
-            const index = FOOD_DATABASE.indexOf(food);
-            const favorite = isFoodFavorite(food);
-            const brand = food.marca && String(food.marca).trim() && String(food.marca).trim().toLowerCase() !== 'web'
-                ? String(food.marca).trim()
-                : '—';
-            const name = food.nome ? String(food.nome).trim() : 'Alimento';
-            const kcal = Number(food.kcal || 0);
-            const p = Number(food.p || 0).toFixed(1);
-            const g = Number(food.g || 0).toFixed(1);
-            const c = Number(food.c || 0).toFixed(1);
-            const pzMisura = food.pzMisura ? String(food.pzMisura).trim() : '';
-
-            return `
-                <div class="food-search-item" onclick="useFoodFromFullSearch(${index})">
-                    <div class="food-search-main">
-                        <div class="food-search-brand">${escapeHtml(brand)}</div>
-                        <div class="food-search-name">
-                            ${escapeHtml(name)}
-                            ${food.verified ? '<span class="food-inline-verified" title="Alimento verificato">✓</span>' : ''}
-                            ${favorite ? '<span class="food-inline-favorite" title="Preferito">★</span>' : ''}
-                        </div>
-                        ${pzMisura ? `<div class="template-search-portion">${escapeHtml(pzMisura)}</div>` : ''}
-                        <div class="food-search-meta">
-                            <span><strong>${kcal}</strong> kcal</span>
-                            <span><strong>C</strong> ${c}g</span>
-                            <span><strong>G</strong> ${g}g</span>
-                            <span><strong>P</strong> ${p}g</span>
-                        </div>
-                    </div>
-                    <button type="button" class="food-favorite-btn ${favorite ? 'is-favorite' : ''}"
-                            data-haptic="tap"
-                            onclick="event.stopPropagation(); toggleFoodFavoriteByIndex(${index})"
-                            title="${favorite ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}">
-                        ${favorite ? '★' : '☆'}
-                    </button>
-                    <button type="button" class="food-search-select-btn"
-                            data-haptic="tap"
-                            onclick="event.stopPropagation(); useFoodFromFullSearch(${index})">
-                        Usa
-                    </button>
-                </div>
-            `;
-        }).join('');
-    }
-
     function useFoodFromFullSearch(index) {
         const food = FOOD_DATABASE[index];
         if (!food) return;
@@ -2265,7 +2199,7 @@
         // Chiude la schermata e precompila il primo campo alimento vuoto, altrimenti Colazione.
         const target = foodSearchTargetMeal || 'Colazione';
 
-        selectFoodForMeal(target, getFoodLabel(food), food.porzione_g || 100);
+        selectFoodForMeal(target, getFoodLabel(food), food.porzione_g || 100, food);
         closeFoodSearch();
 
         const input = document.getElementById(`foodInput-${target}`);
@@ -2289,8 +2223,8 @@
             legacyPersonal.forEach(f => {
                 if (!personal.some(p => p && p.nome === f.nome)) personal.push(f);
             });
-            localStorage.setItem('customFoodsDatabase', JSON.stringify(excel));
-            localStorage.setItem('personalFoodsDatabase', JSON.stringify(personal));
+            safeSetItem('customFoodsDatabase', JSON.stringify(excel));
+            safeSetItem('personalFoodsDatabase', JSON.stringify(personal));
         }
 
         excelFoods = excel.map(f => ({ ...f, verified: true }));
@@ -2298,8 +2232,12 @@
         rebuildFoodDatabase();
     }
 
-    function findFoodMatch(inputName) {
+    function findFoodMatch(inputName, inputKey) {
         const query = String(inputName || '').trim().toLowerCase();
+        // Se l'alimento è stato scelto dalla lista usa proprio quello: cercando solo per nome
+        // con righe doppie verrebbe sempre preso il primo, anche se ne hai scelto un altro
+        const chosen = inputKey ? chosenFoodByInput[inputKey] : null;
+        if (chosen && chosen.label === query && FOOD_DATABASE.includes(chosen.food)) return chosen.food;
         return FOOD_DATABASE.find(f => {
             const marcaStr = String(f.marca || '').toLowerCase();
             const nomeStr = String(f.nome || '').toLowerCase();
@@ -2651,7 +2589,7 @@
         if (lastVisitDate !== todayStr) {
             const readyWord = currentSex === 'M' ? 'pronto ad iniziare?' : 'pronta ad iniziare?';
             message = name ? `☀️ Buongiorno ${name}, ${readyWord}` : `☀️ Buongiorno, ${readyWord}`;
-            localStorage.setItem('lastVisitDateNutriTracker', todayStr);
+            safeSetItem('lastVisitDateNutriTracker', todayStr);
         } else {
             message = name ? `💪 ${name}, continua così! Registra il tuo pasto.` : `💪 Continua così! Registra il tuo pasto.`;
         }
@@ -2704,6 +2642,19 @@
                     appAlert("⚠️ Errore durante l'aggiornamento.");
                 }
             });
+    }
+
+    // Legge la porzione dell'Excel: "125 g", "2 x 125 g", "1 kg", "0,5 l", "33 cl".
+    // Restituisce grammi (o ml) oppure 0 se non riconosciuta (in quel caso si usa 100).
+    function parsePortionGrams(raw) {
+        const s = String(raw === undefined || raw === null ? '' : raw).toLowerCase().replace(',', '.').trim();
+        if (!s) return 0;
+        const m = s.match(/^(\d*\.?\d+)\s*(?:[x×*]\s*(\d*\.?\d+))?\s*(?:(kg|dl|cl|ml|g|l)\b)?/);
+        if (!m) return 0;
+        let value = parseFloat(m[1]);
+        if (m[2]) value *= parseFloat(m[2]);
+        const factor = { kg: 1000, dl: 100, cl: 10, ml: 1, g: 1, l: 1000 }[m[3]] || 1;
+        return value * factor || 0;
     }
 
     /* PARSING EXCEL CON PULIZIA TOTALE DEGLI SPAZI E CASE-INSENSITIVE SU TUTTE LE COLONNE */
@@ -2778,7 +2729,7 @@
                 zuccheri: parseVal(idxZ),
                 saturi: parseVal(idxS),
                 sale: parseVal(idxSale),
-                porzione_g: idxPorzione !== -1 && parseVal(idxPorzione) > 0 ? parseVal(idxPorzione) : 100,
+                porzione_g: idxPorzione !== -1 ? (parsePortionGrams(row[idxPorzione]) || 100) : 100,
                 pzMisura: idxPzMisura !== -1 ? String(row[idxPzMisura] || '').trim() : ''
             });
         }
@@ -2786,7 +2737,7 @@
         if (importedFoods.length > 0) {
             // L'Excel sostituisce solo la parte "Excel": gli alimenti personali non vengono toccati
             excelFoods = importedFoods;
-            localStorage.setItem('customFoodsDatabase', JSON.stringify(importedFoods));
+            safeSetItem('customFoodsDatabase', JSON.stringify(importedFoods));
             rebuildFoodDatabase();
             updateTodaySummary();
         }
@@ -3160,7 +3111,7 @@
             targetKcal: prof.targetKcal || 0,
             waterTargetMl: waterTargetMl
         };
-        localStorage.setItem(`todayDraftNutriTracker_${currentSex}`, JSON.stringify(draft));
+        safeSetItem(`todayDraftNutriTracker_${currentSex}`, JSON.stringify(draft));
     }
 
     function saveEditedEntry() {
@@ -4070,7 +4021,9 @@
 
     /* ===== RICERCA ALIMENTI: ORDINE PER PERTINENZA E FREQUENZA D'USO ===== */
     // true = a parità di pertinenza i preferiti (★) passano prima dei più usati
-    const FOOD_SEARCH_FAVORITES_FIRST = true;
+    const FOOD_SEARCH_FAVORITES_FIRST = false;
+    // Massimo di suggerimenti mostrati sotto i campi (i migliori sono già in cima)
+    const FOOD_SUGGESTIONS_MAX = 50;
 
     // Quante volte ogni alimento del database è stato registrato (giorni salvati + giornata in corso)
     function getFoodUsageCounts() {
@@ -4155,15 +4108,18 @@
 
         if (matches.length > 0) {
             // I risultati sono richiamati per posizione: nessun testo del nome finisce dentro l'attributo onclick
-            searchMatchesCache[meal] = matches.map(f => {
+            const visible = matches.slice(0, FOOD_SUGGESTIONS_MAX);
+            searchMatchesCache[meal] = visible.map(f => {
                 const marca = f.marca || '';
                 const nome = f.nome || 'Alimento';
                 const label = (marca && marca !== 'WEB') ? `${nome} (${marca})` : nome;
-                return { label: label, portion: f.porzione_g || 100 };
+                return { label: label, portion: f.porzione_g || 100, food: f };
             });
             resultsDiv.innerHTML = searchMatchesCache[meal].map((m, i) =>
                 `<div class="autocomplete-item" onclick="selectFoodByIndex('${meal}', ${i})">${escapeHtml(m.label)}</div>`
-            ).join('');
+            ).join('') + (matches.length > visible.length
+                ? `<div class="autocomplete-item" style="color:var(--text-muted);pointer-events:none;">… altri ${matches.length - visible.length} risultati: continua a scrivere per restringere</div>`
+                : '');
             resultsDiv.style.display = 'block';
         } else {
             resultsDiv.style.display = 'none';
@@ -4173,11 +4129,12 @@
     function selectFoodByIndex(meal, index) {
         const item = (searchMatchesCache[meal] || [])[index];
         if (!item) return;
-        selectFoodForMeal(meal, item.label, item.portion);
+        selectFoodForMeal(meal, item.label, item.portion, item.food);
     }
 
-    function selectFoodForMeal(meal, name, defaultGrams) {
+    function selectFoodForMeal(meal, name, defaultGrams, food) {
         document.getElementById(`foodInput-${meal}`).value = name;
+        chosenFoodByInput[meal] = food ? { label: String(name).trim().toLowerCase(), food: food } : null;
         document.getElementById(`foodGrams-${meal}`).value = defaultGrams || 100;
         document.getElementById(`searchResults-${meal}`).style.display = 'none';
     }
@@ -4189,7 +4146,7 @@
 
         if (!inputName) return;
 
-        const match = findFoodMatch(inputName);
+        const match = findFoodMatch(inputName, meal);
 
         if (match) {
             const defaultPortion = parseFloat(match.porzione_g) || 100;
@@ -4728,7 +4685,7 @@
     }
 
     function saveDataToStorage() {
-        localStorage.setItem('nutritionTrackerDataWeb', JSON.stringify(appData));
+        safeSetItem('nutritionTrackerDataWeb', JSON.stringify(appData));
     }
 
     /* ===== RESET: ZONA PERICOLOSA ===== */
@@ -4909,7 +4866,7 @@
         const gramsEl = document.getElementById('foodGrams-Recipe');
         const inputName = input.value.trim(); const grams = Number(gramsEl.value);
         if(!inputName || !grams || grams<=0) return;
-        const match = findFoodMatch(inputName);
+        const match = findFoodMatch(inputName, 'Recipe');
         if(!match) { appAlert(`L'alimento "${inputName}" non è presente nel database. Selezionalo dalla ricerca o aggiungilo prima.`); return; }
         const snap = macroNumbers(match);
         const ing = { nome:getFoodLabel(match), grams, sourceFoodKey:foodKey(match), verified:match.verified===true, snapshot:snap };
@@ -5025,7 +4982,7 @@
         if(!input||!gramsEl)return;
         const inputName=input.value.trim(); const grams=Number(gramsEl.value);
         if(!inputName||!grams||grams<=0){appAlert('Inserisci il nome dell\'alimento e i grammi.');return;}
-        const match=findFoodMatch(inputName);
+        const match=findFoodMatch(inputName, 'CompositeMeal');
         if(!match){appAlert(`L'alimento "${inputName}" non è presente nel database. Selezionalo dalla lista o aggiungilo prima.`);return;}
         const snap=macroNumbers(match);
         compositeMealDraft.push({type:'food',foodKey:foodKey(match),foodName:getFoodLabel(match),grams,snapshot:snap});
@@ -5151,9 +5108,9 @@
                 }
 
                 const excelBackup = safeParseArray(parsed.customFoods);
-                if (excelBackup) localStorage.setItem('customFoodsDatabase', JSON.stringify(excelBackup));
+                if (excelBackup) safeSetItem('customFoodsDatabase', JSON.stringify(excelBackup));
                 const personalBackup = safeParseArray(parsed.personalFoods);
-                if (personalBackup) localStorage.setItem('personalFoodsDatabase', JSON.stringify(personalBackup));
+                if (personalBackup) safeSetItem('personalFoodsDatabase', JSON.stringify(personalBackup));
                 loadFoodStorage();
 
                 showToast("✅ Backup ripristinato con successo!");
@@ -5191,7 +5148,7 @@
         // Gli alimenti personali restano solo su questo telefono, separati da quelli dell'Excel
         const newFood = { verified: false, marca: 'Personalizzato', nome: name, kcal: kcal, c: c, g: g, p: p, zuccheri: zuccheri, saturi: saturi, sale: sale, porzione_g: 100 };
         personalFoods.push(newFood);
-        localStorage.setItem('personalFoodsDatabase', JSON.stringify(personalFoods));
+        safeSetItem('personalFoodsDatabase', JSON.stringify(personalFoods));
         rebuildFoodDatabase();
 
         showToast(`✅ Alimento salvato su questo telefono!`);
@@ -5237,7 +5194,7 @@
     const _originalCloseFoodSearch = closeFoodSearch;
     closeFoodSearch = function(){ _originalCloseFoodSearch(); searchResource='food'; };
 
-    renderFoodSearchResults = function() {
+    function renderFoodSearchResults() {
         const input=document.getElementById('foodSearchInput'),list=document.getElementById('foodSearchResults'),count=document.getElementById('foodSearchCount');
         if(!input||!list||!count)return;
         const q=input.value.toLowerCase().trim();
@@ -5257,7 +5214,7 @@
         const shown=matches.slice(0,200); count.textContent=`${matches.length} alimento${matches.length===1?'':'i'}${matches.length>200?' · mostrati i primi 200':''}`;
         if(!shown.length){list.innerHTML='<div class="food-empty">Nessun alimento corrispondente al filtro o alla ricerca.</div>';return;}
         list.innerHTML=shown.map(food=>{const index=FOOD_DATABASE.indexOf(food),favorite=isFoodFavorite(food),brand=food.marca&&String(food.marca).trim()&&String(food.marca).trim().toLowerCase()!=='web'?String(food.marca).trim():'—',name=food.nome?String(food.nome).trim():'Alimento',kcal=Number(food.kcal||0),pp=Number(food.p||0).toFixed(1),gg=Number(food.g||0).toFixed(1),cc=Number(food.c||0).toFixed(1),pzMisura=food.pzMisura?String(food.pzMisura).trim():'';return `<div class="food-search-item" onclick="useFoodFromFullSearch(${index})"><div class="food-search-main"><div class="food-search-brand">${escapeHtml(brand)}</div><div class="food-search-name">${escapeHtml(name)} ${food.verified?'<span class="food-inline-verified">✓</span>':''}${favorite?'<span class="food-inline-favorite">★</span>':''}</div>${pzMisura?`<div class="template-search-portion">${escapeHtml(pzMisura)}</div>`:''}<div class="food-search-meta"><strong>${kcal}</strong> kcal · <strong>C</strong> ${cc}g · <strong>G</strong> ${gg}g · <strong>P</strong> ${pp}g</div></div><button type="button" class="food-favorite-btn ${favorite?'is-favorite':''}" onclick="event.stopPropagation();toggleFoodFavoriteByIndex(${index})">${favorite?'★':'☆'}</button><button type="button" class="food-search-select-btn" onclick="event.stopPropagation();useFoodFromFullSearch(${index})">Usa</button></div>`;}).join('');
-    };
+    }
 
     function setFoodSearchFilter(filter){foodSearchFilter=['all','verified','added','favorite'].includes(filter)?filter:'all';document.querySelectorAll('.food-filter').forEach(btn=>btn.classList.remove('active'));const a=document.getElementById(`foodFilter-${foodSearchFilter}`);if(a)a.classList.add('active');renderFoodSearchResults();}
 </script>
