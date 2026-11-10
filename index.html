@@ -1916,6 +1916,126 @@
         }
     }
 
+    /* ===== ARCHIVIO ALIMENTI (IndexedDB) =====
+       Gli elenchi alimenti (Excel + personali) si salvano in IndexedDB, che non ha il limite di circa 5 MB
+       della memoria del browser. Se IndexedDB non è disponibile si usa la memoria del browser come prima.
+       I dati già presenti sul telefono vengono copiati nel nuovo archivio al primo avvio: la copia vecchia
+       si cancella solo dopo aver verificato che quella nuova sia completa. */
+    const IDB_NAME = 'nutritracker-db';
+    const IDB_STORE = 'kv';
+    let _idbPromise = null;
+
+    function openIdb() {
+        if (_idbPromise) return _idbPromise;
+        _idbPromise = new Promise(function(resolve) {
+            try {
+                if (!window.indexedDB) { resolve(null); return; }
+                const req = indexedDB.open(IDB_NAME, 1);
+                req.onupgradeneeded = function() {
+                    const db = req.result;
+                    if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE);
+                };
+                req.onsuccess = function() {
+                    const db = req.result;
+                    db.onversionchange = function() { db.close(); _idbPromise = null; };
+                    resolve(db);
+                };
+                req.onerror = function() { resolve(null); };
+                req.onblocked = function() { resolve(null); };
+            } catch (err) {
+                resolve(null);
+            }
+        });
+        return _idbPromise;
+    }
+
+    // Legge un valore: restituisce undefined se manca o se IndexedDB non è disponibile
+    async function idbGet(key) {
+        const db = await openIdb();
+        if (!db) return undefined;
+        return new Promise(function(resolve) {
+            try {
+                const tx = db.transaction(IDB_STORE, 'readonly');
+                const rq = tx.objectStore(IDB_STORE).get(key);
+                rq.onsuccess = function() { resolve(rq.result); };
+                rq.onerror = function() { resolve(undefined); };
+                tx.onabort = function() { resolve(undefined); };
+            } catch (err) {
+                resolve(undefined);
+            }
+        });
+    }
+
+    // Scrive un valore: true solo a scrittura completata
+    async function idbSet(key, value) {
+        const db = await openIdb();
+        if (!db) return false;
+        return new Promise(function(resolve) {
+            try {
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                tx.objectStore(IDB_STORE).put(value, key);
+                tx.oncomplete = function() { resolve(true); };
+                tx.onerror = function() { resolve(false); };
+                tx.onabort = function() { resolve(false); };
+            } catch (err) {
+                resolve(false);
+            }
+        });
+    }
+
+    async function idbDelete(key) {
+        const db = await openIdb();
+        if (!db) return false;
+        return new Promise(function(resolve) {
+            try {
+                const tx = db.transaction(IDB_STORE, 'readwrite');
+                tx.objectStore(IDB_STORE).delete(key);
+                tx.oncomplete = function() { resolve(true); };
+                tx.onerror = function() { resolve(false); };
+                tx.onabort = function() { resolve(false); };
+            } catch (err) {
+                resolve(false);
+            }
+        });
+    }
+
+    // Legge un elenco alimenti. Se è ancora solo nella memoria del browser lo copia in IndexedDB.
+    async function readFoodList(key) {
+        const stored = await idbGet(key);
+        if (Array.isArray(stored)) return stored;
+
+        let legacy = null;
+        try { legacy = safeParseArray(localStorage.getItem(key)); } catch (err) { legacy = null; }
+        if (legacy) {
+            const copied = await idbSet(key, legacy);
+            if (copied) {
+                const check = await idbGet(key);
+                if (Array.isArray(check) && check.length === legacy.length) {
+                    try { localStorage.removeItem(key); } catch (err) {}
+                }
+            }
+            return legacy;
+        }
+        return null;
+    }
+
+    // Salva un elenco alimenti. Senza IndexedDB usa la memoria del browser come prima.
+    async function saveFoodList(key, list) {
+        const ok = await idbSet(key, list);
+        if (ok) {
+            try { localStorage.removeItem(key); } catch (err) {}
+            return true;
+        }
+        return safeSetItem(key, JSON.stringify(list));
+    }
+
+    async function clearFoodStorage() {
+        for (const key of ['customFoodsDatabase', 'personalFoodsDatabase']) {
+            await idbDelete(key);
+            try { localStorage.removeItem(key); } catch (err) {}
+        }
+    }
+
     /* ===== RIPARTIZIONE MACRO: PRESET E COSTANTI ===== */
     // Percentuali sulle kcal totali. Proteine e carboidrati = 4 kcal/g, grassi = 9 kcal/g.
     const KCAL_PER_GRAM = { p: 4, c: 4, g: 9 };
@@ -2212,9 +2332,9 @@
         }
     }
 
-    function loadFoodStorage() {
-        let excel = safeParseArray(localStorage.getItem('customFoodsDatabase')) || [];
-        let personal = safeParseArray(localStorage.getItem('personalFoodsDatabase')) || [];
+    async function loadFoodStorage() {
+        let excel = (await readFoodList('customFoodsDatabase')) || [];
+        let personal = (await readFoodList('personalFoodsDatabase')) || [];
 
         // Migrazione: in passato gli alimenti "Personalizzato" venivano salvati insieme a quelli dell'Excel
         const legacyPersonal = excel.filter(f => f && f.marca === 'Personalizzato');
@@ -2223,8 +2343,8 @@
             legacyPersonal.forEach(f => {
                 if (!personal.some(p => p && p.nome === f.nome)) personal.push(f);
             });
-            safeSetItem('customFoodsDatabase', JSON.stringify(excel));
-            safeSetItem('personalFoodsDatabase', JSON.stringify(personal));
+            await saveFoodList('customFoodsDatabase', excel);
+            await saveFoodList('personalFoodsDatabase', personal);
         }
 
         excelFoods = excel.map(f => ({ ...f, verified: true }));
@@ -2335,9 +2455,9 @@
         return out;
     }
 
-    window.onload = function() {
+    window.onload = async function() {
         initAppModal();
-        loadFoodStorage();
+        try { await loadFoodStorage(); } catch (err) { console.error('Caricamento alimenti non riuscito:', err); }
 
         const savedData = localStorage.getItem('nutritionTrackerDataWeb');
         if (savedData) {
@@ -2628,8 +2748,8 @@
                 if (!res.ok) throw new Error();
                 return res.arrayBuffer();
             })
-            .then(buffer => {
-                const result = parseExcelArrayBuffer(buffer);
+            .then(async buffer => {
+                const result = await parseExcelArrayBuffer(buffer);
                 if (showSuccessAlert) {
                     const skippedNote = (result && result.skipped > 0)
                         ? ` (${result.skipped} scartati per dati mancanti)`
@@ -2658,7 +2778,7 @@
     }
 
     /* PARSING EXCEL CON PULIZIA TOTALE DEGLI SPAZI E CASE-INSENSITIVE SU TUTTE LE COLONNE */
-    function parseExcelArrayBuffer(dataBuffer) {
+    async function parseExcelArrayBuffer(dataBuffer) {
         const data = new Uint8Array(dataBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
         const worksheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -2737,9 +2857,9 @@
         if (importedFoods.length > 0) {
             // L'Excel sostituisce solo la parte "Excel": gli alimenti personali non vengono toccati
             excelFoods = importedFoods;
-            safeSetItem('customFoodsDatabase', JSON.stringify(importedFoods));
             rebuildFoodDatabase();
             updateTodaySummary();
+            await saveFoodList('customFoodsDatabase', importedFoods);
         }
 
         return { imported: importedFoods.length, skipped: skippedIncomplete };
@@ -4749,8 +4869,7 @@
         if (!ok) return;
 
         localStorage.removeItem('nutritionTrackerDataWeb');
-        localStorage.removeItem('customFoodsDatabase');
-        localStorage.removeItem('personalFoodsDatabase');
+        await clearFoodStorage();
         localStorage.removeItem('favoriteFoodsDatabase');
         localStorage.removeItem('lastVisitDateNutriTracker');
         localStorage.removeItem('todayDraftNutriTracker_F');
@@ -5133,8 +5252,8 @@
     function exportBackup() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
             appData: appData,
-            customFoods: localStorage.getItem('customFoodsDatabase'),
-            personalFoods: localStorage.getItem('personalFoodsDatabase')
+            customFoods: excelFoods.length ? JSON.stringify(excelFoods) : null,
+            personalFoods: personalFoods.length ? JSON.stringify(personalFoods) : null
         }));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
@@ -5149,7 +5268,7 @@
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = async function(e) {
             try {
                 const parsed = JSON.parse(e.target.result);
                 if (parsed.appData) {
@@ -5158,10 +5277,10 @@
                 }
 
                 const excelBackup = safeParseArray(parsed.customFoods);
-                if (excelBackup) safeSetItem('customFoodsDatabase', JSON.stringify(excelBackup));
+                if (excelBackup) await saveFoodList('customFoodsDatabase', excelBackup);
                 const personalBackup = safeParseArray(parsed.personalFoods);
-                if (personalBackup) safeSetItem('personalFoodsDatabase', JSON.stringify(personalBackup));
-                loadFoodStorage();
+                if (personalBackup) await saveFoodList('personalFoodsDatabase', personalBackup);
+                await loadFoodStorage();
 
                 showToast("✅ Backup ripristinato con successo!");
                 currentSex = appData.lockedSex || appData.activeSex || 'M';
@@ -5180,7 +5299,7 @@
         reader.readAsText(file);
     }
 
-    function addNewFoodToDatabase() {
+    async function addNewFoodToDatabase() {
         const name = document.getElementById('newFoodName').value.trim();
         const kcal = parseFloat(document.getElementById('newFoodKcal').value);
         const p = parseFloat(document.getElementById('newFoodP').value) || 0;
@@ -5198,8 +5317,8 @@
         // Gli alimenti personali restano solo su questo telefono, separati da quelli dell'Excel
         const newFood = { verified: false, marca: 'Personalizzato', nome: name, kcal: kcal, c: c, g: g, p: p, zuccheri: zuccheri, saturi: saturi, sale: sale, porzione_g: 100 };
         personalFoods.push(newFood);
-        safeSetItem('personalFoodsDatabase', JSON.stringify(personalFoods));
         rebuildFoodDatabase();
+        await saveFoodList('personalFoodsDatabase', personalFoods);
 
         showToast(`✅ Alimento salvato su questo telefono!`);
 
