@@ -5252,7 +5252,6 @@
     function exportBackup() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
             appData: appData,
-            customFoods: excelFoods.length ? JSON.stringify(excelFoods) : null,
             personalFoods: personalFoods.length ? JSON.stringify(personalFoods) : null
         }));
         const downloadAnchor = document.createElement('a');
@@ -5281,6 +5280,8 @@
                 const personalBackup = safeParseArray(parsed.personalFoods);
                 if (personalBackup) await saveFoodList('personalFoodsDatabase', personalBackup);
                 await loadFoodStorage();
+                // Un backup nuovo non contiene gli alimenti dell'Excel: se non ci sono ancora, si scaricano da GitHub
+                if (!excelFoods.length) syncDatabaseFromGithub(false);
 
                 showToast("✅ Backup ripristinato con successo!");
                 currentSex = appData.lockedSex || appData.activeSex || 'M';
