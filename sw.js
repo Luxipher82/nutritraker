@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nutritracker-cache-v34';
+const CACHE_NAME = 'nutritracker-cache-v36';
 const urlsToCache = [
     './',
     './index.html',
