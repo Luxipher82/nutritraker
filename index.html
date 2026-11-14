@@ -1180,6 +1180,27 @@
         .search-resource-tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
         .template-search-kind { font-size:.65rem; color:var(--primary); font-weight:700; text-transform:uppercase; margin-bottom:2px; }
         .template-search-portion { font-size:.7rem; color:var(--text-muted); margin-top:2px; }
+
+        /* ===== SCANNER CODICI A BARRE ===== */
+        .scan-btn { position:absolute; right:3px; top:50%; transform:translateY(-50%); width:34px; height:34px; padding:0; background:transparent; color:var(--primary); border:none; border-radius:8px; display:flex; align-items:center; justify-content:center; }
+        .scan-btn:hover { background:rgba(0,0,0,0.06); }
+        .scan-btn.inline { position:static; transform:none; flex:0 0 auto; }
+        .scanner-overlay { position:fixed; inset:0; z-index:3800; background:rgba(15,23,42,0.97); display:none; }
+        .scanner-overlay.open { display:block; }
+        .scanner-page { width:100%; max-width:560px; height:100%; margin:0 auto; box-sizing:border-box; padding:12px; display:flex; flex-direction:column; gap:10px; color:#fff; }
+        .scanner-header { display:flex; justify-content:space-between; align-items:center; gap:10px; }
+        .scanner-header h3 { color:#fff; margin:0; font-size:1.05rem; }
+        .scanner-status { color:#cbd5e1; font-size:.72rem; margin-top:2px; }
+        .scanner-view { position:relative; flex:1; min-height:200px; max-height:62vh; background:#000; border-radius:14px; overflow:hidden; }
+        .scanner-view video { width:100%; height:100%; object-fit:cover; display:block; }
+        .scanner-frame { position:absolute; left:8%; right:8%; top:30%; bottom:30%; border:3px solid rgba(255,255,255,0.92); border-radius:12px; box-shadow:0 0 0 9999px rgba(0,0,0,0.35); pointer-events:none; }
+        .scanner-frame::after { content:''; position:absolute; left:6%; right:6%; top:12%; height:2px; background:var(--danger); animation:scanLine 1.6s ease-in-out infinite alternate; }
+        @keyframes scanLine { from { top:12%; } to { top:88%; } }
+        .scanner-message { color:#e2e8f0; font-size:.82rem; line-height:1.4; min-height:1.2em; }
+        .scanner-manual { display:flex; gap:8px; }
+        .scanner-manual input { flex:2; }
+        .scanner-manual button { flex:1; }
+        @media (prefers-reduced-motion: reduce) { .scanner-frame::after { animation:none; } }
     </style>
 </head>
 <body class="theme-female">
@@ -1318,7 +1339,8 @@
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Colazione" placeholder="Cerca cibo..." onclick="openFoodSearch('Colazione')" oninput="searchFood('Colazione')" autocomplete="off">
+                    <input type="text" id="foodInput-Colazione" placeholder="Cerca cibo..." style="padding-right: 40px;" onclick="openFoodSearch('Colazione')" oninput="searchFood('Colazione')" autocomplete="off">
+                    <button type="button" class="scan-btn" data-haptic="tap" aria-label="Scansiona codice a barre" title="Scansiona codice a barre" onclick="openScanner('Colazione')"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8V4.5H6M18 4.5h3.5V8M21.5 16v3.5H18M6 19.5H2.5V16"/><g fill="currentColor" stroke="none"><rect x="6" y="8" width="1.4" height="8"/><rect x="8.6" y="8" width="0.9" height="8"/><rect x="10.7" y="8" width="2" height="8"/><rect x="13.9" y="8" width="0.9" height="8"/><rect x="16" y="8" width="1.4" height="8"/></g></svg></button>
                     <div id="searchResults-Colazione" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Colazione" placeholder="g" style="flex: 1;">
@@ -1349,7 +1371,8 @@
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Pranzo" placeholder="Cerca cibo..." onclick="openFoodSearch('Pranzo')" oninput="searchFood('Pranzo')" autocomplete="off">
+                    <input type="text" id="foodInput-Pranzo" placeholder="Cerca cibo..." style="padding-right: 40px;" onclick="openFoodSearch('Pranzo')" oninput="searchFood('Pranzo')" autocomplete="off">
+                    <button type="button" class="scan-btn" data-haptic="tap" aria-label="Scansiona codice a barre" title="Scansiona codice a barre" onclick="openScanner('Pranzo')"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8V4.5H6M18 4.5h3.5V8M21.5 16v3.5H18M6 19.5H2.5V16"/><g fill="currentColor" stroke="none"><rect x="6" y="8" width="1.4" height="8"/><rect x="8.6" y="8" width="0.9" height="8"/><rect x="10.7" y="8" width="2" height="8"/><rect x="13.9" y="8" width="0.9" height="8"/><rect x="16" y="8" width="1.4" height="8"/></g></svg></button>
                     <div id="searchResults-Pranzo" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Pranzo" placeholder="g" style="flex: 1;">
@@ -1380,7 +1403,8 @@
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Cena" placeholder="Cerca cibo..." onclick="openFoodSearch('Cena')" oninput="searchFood('Cena')" autocomplete="off">
+                    <input type="text" id="foodInput-Cena" placeholder="Cerca cibo..." style="padding-right: 40px;" onclick="openFoodSearch('Cena')" oninput="searchFood('Cena')" autocomplete="off">
+                    <button type="button" class="scan-btn" data-haptic="tap" aria-label="Scansiona codice a barre" title="Scansiona codice a barre" onclick="openScanner('Cena')"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8V4.5H6M18 4.5h3.5V8M21.5 16v3.5H18M6 19.5H2.5V16"/><g fill="currentColor" stroke="none"><rect x="6" y="8" width="1.4" height="8"/><rect x="8.6" y="8" width="0.9" height="8"/><rect x="10.7" y="8" width="2" height="8"/><rect x="13.9" y="8" width="0.9" height="8"/><rect x="16" y="8" width="1.4" height="8"/></g></svg></button>
                     <div id="searchResults-Cena" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Cena" placeholder="g" style="flex: 1;">
@@ -1411,7 +1435,8 @@
             </div>
             <div class="row">
                 <div style="flex: 2; position: relative;">
-                    <input type="text" id="foodInput-Snack" placeholder="Cerca cibo..." onclick="openFoodSearch('Snack')" oninput="searchFood('Snack')" autocomplete="off">
+                    <input type="text" id="foodInput-Snack" placeholder="Cerca cibo..." style="padding-right: 40px;" onclick="openFoodSearch('Snack')" oninput="searchFood('Snack')" autocomplete="off">
+                    <button type="button" class="scan-btn" data-haptic="tap" aria-label="Scansiona codice a barre" title="Scansiona codice a barre" onclick="openScanner('Snack')"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8V4.5H6M18 4.5h3.5V8M21.5 16v3.5H18M6 19.5H2.5V16"/><g fill="currentColor" stroke="none"><rect x="6" y="8" width="1.4" height="8"/><rect x="8.6" y="8" width="0.9" height="8"/><rect x="10.7" y="8" width="2" height="8"/><rect x="13.9" y="8" width="0.9" height="8"/><rect x="16" y="8" width="1.4" height="8"/></g></svg></button>
                     <div id="searchResults-Snack" class="autocomplete-results"></div>
                 </div>
                 <input type="number" id="foodGrams-Snack" placeholder="g" style="flex: 1;">
@@ -1492,6 +1517,7 @@
                    placeholder="Cerca per marca, alimento o codice a barre..."
                    autocomplete="off"
                    oninput="renderFoodSearchResults()">
+            <button type="button" class="scan-btn inline" data-haptic="tap" aria-label="Scansiona codice a barre" title="Scansiona codice a barre" onclick="openScanner(foodSearchTargetMeal || 'Colazione')"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 8V4.5H6M18 4.5h3.5V8M21.5 16v3.5H18M6 19.5H2.5V16"/><g fill="currentColor" stroke="none"><rect x="6" y="8" width="1.4" height="8"/><rect x="8.6" y="8" width="0.9" height="8"/><rect x="10.7" y="8" width="2" height="8"/><rect x="13.9" y="8" width="0.9" height="8"/><rect x="16" y="8" width="1.4" height="8"/></g></svg></button>
         </div>
 
         <div class="search-resource-tabs">
@@ -1513,6 +1539,28 @@
 
         <div id="foodSearchCount" class="food-search-count"></div>
         <div id="foodSearchResults" class="food-search-list"></div>
+    </div>
+</div>
+
+<!-- SCANNER CODICI A BARRE -->
+<div id="scannerOverlay" class="scanner-overlay" role="dialog" aria-modal="true" aria-labelledby="scannerTitle" aria-hidden="true">
+    <div class="scanner-page">
+        <div class="scanner-header">
+            <div>
+                <h3 id="scannerTitle">Scansiona il codice a barre</h3>
+                <div class="scanner-status">La fotocamera non registra né invia immagini</div>
+            </div>
+            <button type="button" class="close-btn" data-haptic="tap" onclick="closeScanner()" aria-label="Chiudi">✕</button>
+        </div>
+        <div id="scannerView" class="scanner-view">
+            <video id="scannerVideo" playsinline muted autoplay></video>
+            <div class="scanner-frame"></div>
+        </div>
+        <div id="scannerMessage" class="scanner-message"></div>
+        <div class="scanner-manual">
+            <input type="text" id="scannerManualInput" inputmode="numeric" placeholder="Oppure scrivi il codice a barre" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();submitManualCode();}">
+            <button type="button" data-haptic="tap" onclick="submitManualCode()">Cerca</button>
+        </div>
     </div>
 </div>
 
@@ -1750,6 +1798,10 @@
                 <label for="newFoodSale">Sale (g)</label>
                 <input type="number" id="newFoodSale" step="0.1" placeholder="0">
             </div>
+        </div>
+        <div class="form-group">
+            <label for="newFoodEan">Codice a barre (facoltativo)</label>
+            <input type="text" id="newFoodEan" inputmode="numeric" placeholder="Es. 8076800195057" autocomplete="off">
         </div>
         <button data-haptic="success" onclick="addNewFoodToDatabase()" style="width: 100%; margin-top: 6px; padding: 8px;">Salva Alimento</button>
 
@@ -2264,7 +2316,208 @@
         return k ? (FOOD_BY_EAN.get(k) || null) : null;
     }
 
-    function rebuildFoodDatabase() {
+    /* ===== SCANNER CODICI A BARRE =====
+       Usa il lettore integrato nel browser (BarcodeDetector, su Chrome e Samsung Internet per Android).
+       La fotocamera si accende solo mentre la schermata è aperta, e le immagini non vengono salvate né inviate. */
+    const SCAN_FORMATS = ['ean_13', 'ean_8', 'upc_a', 'upc_e'];
+    const scannerState = { running: false, stream: null, detector: null, meal: null, lastCode: '', repeat: 0, misses: 0, raf: null, lastTick: 0, prevOverflow: '' };
+
+    // Cifra di controllo di EAN-13, EAN-8, UPC-A e GTIN-14: scarta le letture sbagliate
+    function hasValidCheckDigit(code, format) {
+        if (format === 'upc_e') return true;
+        if (![8, 12, 13, 14].includes(code.length)) return false;
+        let sum = 0;
+        for (let i = code.length - 2, w = 3; i >= 0; i--, w = (w === 3 ? 1 : 3)) sum += Number(code[i]) * w;
+        return ((10 - (sum % 10)) % 10) === Number(code[code.length - 1]);
+    }
+
+    function scannerEl(id) { return document.getElementById(id); }
+
+    function setScannerMessage(text) {
+        const el = scannerEl('scannerMessage');
+        if (el) el.textContent = text || '';
+    }
+
+    function isScannerOpen() {
+        const o = scannerEl('scannerOverlay');
+        return !!(o && o.classList.contains('open'));
+    }
+
+    // Spegne la fotocamera e libera le risorse
+    function stopScannerCamera() {
+        scannerState.running = false;
+        if (scannerState.raf) { cancelAnimationFrame(scannerState.raf); scannerState.raf = null; }
+        if (scannerState.stream) {
+            try { scannerState.stream.getTracks().forEach(function(t) { t.stop(); }); } catch (err) {}
+            scannerState.stream = null;
+        }
+        const v = scannerEl('scannerVideo');
+        if (v) { try { v.pause(); } catch (err) {} v.srcObject = null; }
+    }
+
+    function closeScanner() {
+        stopScannerCamera();
+        const o = scannerEl('scannerOverlay');
+        if (!o || !o.classList.contains('open')) return;
+        o.classList.remove('open');
+        o.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = scannerState.prevOverflow;
+    }
+
+    // Senza fotocamera si può comunque scrivere il codice a mano
+    function noCameraMode(message) {
+        const v = scannerEl('scannerView');
+        if (v) v.style.display = 'none';
+        setScannerMessage(message);
+    }
+
+    async function openScanner(meal) {
+        const overlay = scannerEl('scannerOverlay');
+        if (!overlay) return;
+        scannerState.meal = meal || 'Colazione';
+        scannerState.lastCode = '';
+        scannerState.repeat = 0;
+        scannerState.misses = 0;
+        if (!overlay.classList.contains('open')) scannerState.prevOverflow = document.body.style.overflow;
+        overlay.classList.add('open');
+        overlay.setAttribute('aria-hidden', 'false');
+        document.body.style.overflow = 'hidden';
+        scannerEl('scannerManualInput').value = '';
+        const view = scannerEl('scannerView');
+        if (view) view.style.display = '';
+        setScannerMessage('Avvio della fotocamera…');
+
+        if (!('BarcodeDetector' in window)) {
+            noCameraMode('Questo browser non ha il lettore di codici a barre. Scrivi il codice qui sotto.');
+            return;
+        }
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            noCameraMode('La fotocamera non è disponibile. Scrivi il codice qui sotto.');
+            return;
+        }
+        try {
+            let formats = SCAN_FORMATS;
+            if (typeof BarcodeDetector.getSupportedFormats === 'function') {
+                const supported = await BarcodeDetector.getSupportedFormats();
+                formats = SCAN_FORMATS.filter(function(f) { return supported.includes(f); });
+            }
+            if (!formats.length) {
+                noCameraMode('Questo telefono non legge i codici EAN. Scrivi il codice qui sotto.');
+                return;
+            }
+            scannerState.detector = new BarcodeDetector({ formats: formats });
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+                audio: false
+            });
+            // La schermata è stata chiusa mentre si aspettava il permesso: spegne subito la fotocamera
+            if (!isScannerOpen()) { stream.getTracks().forEach(function(t) { t.stop(); }); return; }
+            scannerState.stream = stream;
+            const video = scannerEl('scannerVideo');
+            video.srcObject = stream;
+            await video.play();
+            scannerState.running = true;
+            setScannerMessage('Inquadra il codice a barre del prodotto');
+            scannerState.raf = requestAnimationFrame(scannerTick);
+        } catch (err) {
+            stopScannerCamera();
+            const name = err && err.name;
+            if (name === 'NotAllowedError' || name === 'SecurityError') {
+                noCameraMode('Permesso alla fotocamera negato. Puoi riattivarlo dalle impostazioni del browser, oppure scrivere il codice qui sotto.');
+            } else if (name === 'NotFoundError') {
+                noCameraMode('Nessuna fotocamera trovata. Scrivi il codice qui sotto.');
+            } else {
+                noCameraMode('Non riesco ad avviare la fotocamera. Scrivi il codice qui sotto.');
+            }
+        }
+    }
+
+    // Legge un'immagine ogni 140 ms circa. Il codice vale solo se la cifra di controllo torna e
+    // se viene letto due volte di fila uguale.
+    async function scannerTick() {
+        if (!scannerState.running) return;
+        const now = performance.now();
+        const video = scannerEl('scannerVideo');
+        if (now - scannerState.lastTick > 140 && video && video.readyState >= 2) {
+            scannerState.lastTick = now;
+            try {
+                const found = await scannerState.detector.detect(video);
+                if (!scannerState.running) return;
+                let accepted = null;
+                for (const item of found) {
+                    const code = cleanEan(item.rawValue);
+                    if (code && hasValidCheckDigit(code, item.format)) { accepted = code; break; }
+                }
+                if (accepted) {
+                    scannerState.misses = 0;
+                    if (accepted === scannerState.lastCode) scannerState.repeat++;
+                    else { scannerState.lastCode = accepted; scannerState.repeat = 1; }
+                    if (scannerState.repeat >= 2) { handleScannedCode(accepted); return; }
+                } else if (++scannerState.misses > 6) {
+                    scannerState.lastCode = '';
+                    scannerState.repeat = 0;
+                }
+            } catch (err) {}
+        }
+        if (scannerState.running) scannerState.raf = requestAnimationFrame(scannerTick);
+    }
+
+    function submitManualCode() {
+        const code = cleanEan(scannerEl('scannerManualInput').value);
+        if (!code) {
+            setScannerMessage('Il codice deve avere da 8 a 14 cifre.');
+            return;
+        }
+        handleScannedCode(code);
+    }
+
+    function handleScannedCode(code) {
+        haptic('success');
+        const meal = scannerState.meal || 'Colazione';
+        const food = findFoodByEan(code);
+        closeScanner();
+        if (food) {
+            // Come quando si sceglie dalla ricerca: compila il campo e la porzione, poi si preme "+ Add"
+            selectFoodForMeal(meal, getFoodLabel(food), food.porzione_g || 100, food);
+            closeFoodSearch();
+            const input = document.getElementById(`foodInput-${meal}`);
+            if (input) {
+                input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(function() {
+                    const grams = document.getElementById(`foodGrams-${meal}`);
+                    if (grams) grams.focus();
+                }, 100);
+            }
+            showToast(`✅ ${getFoodLabel(food)}`);
+        } else {
+            handleUnknownCode(code, meal);
+        }
+    }
+
+    async function handleUnknownCode(code, meal) {
+        const choice = await appChoose(`Il codice ${code} non è presente nel database.`, [
+            { label: 'Riprova a scansionare', sub: 'Inquadra di nuovo il codice' },
+            { label: 'Aggiungilo come alimento personale', sub: 'Si apre il modulo con il codice già inserito' }
+        ], { title: 'Prodotto non trovato' });
+        if (choice === 0) {
+            openScanner(meal);
+        } else if (choice === 1) {
+            const drawer = document.getElementById('addFoodDrawer');
+            if (drawer && drawer.style.display !== 'flex') toggleDrawer('addFoodDrawer');
+            const eanInput = document.getElementById('newFoodEan');
+            if (eanInput) eanInput.value = code;
+            setTimeout(function() {
+                const nameInput = document.getElementById('newFoodName');
+                if (nameInput) nameInput.focus();
+            }, 150);
+        }
+    }
+
+    // La fotocamera si spegne se l'app va in secondo piano
+    document.addEventListener('visibilitychange', function() { if (document.hidden) closeScanner(); });
+    window.addEventListener('pagehide', closeScanner);
+
+        function rebuildFoodDatabase() {
         // TRUE = alimento proveniente dall'Excel ufficiale/database.
         // FALSE = alimento creato manualmente dall'utente.
         excelFoods = excelFoods.map(f => ({ ...f, verified: true }));
@@ -2639,6 +2892,10 @@
         });
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
+                if (isScannerOpen()) {
+                    closeScanner();
+                    return;
+                }
                 const search = document.getElementById('foodSearchOverlay');
                 if (search && search.classList.contains('open')) {
                     closeFoodSearch();
@@ -5383,14 +5640,27 @@
         const zuccheri = parseFloat(document.getElementById('newFoodZuccheri').value) || 0;
         const saturi = parseFloat(document.getElementById('newFoodSaturi').value) || 0;
         const sale = parseFloat(document.getElementById('newFoodSale').value) || 0;
+        const eanRaw = document.getElementById('newFoodEan').value.trim();
+        const ean = cleanEan(eanRaw);
 
         if (!name || isNaN(kcal)) {
             appAlert("Inserisci il nome e le Kcal dell'alimento.");
             return;
         }
+        if (eanRaw && !ean) {
+            appAlert('Il codice a barre non è valido: servono da 8 a 14 cifre.');
+            return;
+        }
+        if (ean) {
+            const already = findFoodByEan(ean);
+            if (already) {
+                appAlert(`Questo codice è già presente nel database: ${getFoodLabel(already)}.`);
+                return;
+            }
+        }
 
         // Gli alimenti personali restano solo su questo telefono, separati da quelli dell'Excel
-        const newFood = { verified: false, marca: 'Personalizzato', nome: name, kcal: kcal, c: c, g: g, p: p, zuccheri: zuccheri, saturi: saturi, sale: sale, porzione_g: 100 };
+        const newFood = { verified: false, marca: 'Personalizzato', nome: name, kcal: kcal, c: c, g: g, p: p, zuccheri: zuccheri, saturi: saturi, sale: sale, porzione_g: 100, ean: ean };
         personalFoods.push(newFood);
         rebuildFoodDatabase();
         await saveFoodList('personalFoodsDatabase', personalFoods);
@@ -5405,6 +5675,7 @@
         document.getElementById('newFoodZuccheri').value = '';
         document.getElementById('newFoodSaturi').value = '';
         document.getElementById('newFoodSale').value = '';
+        document.getElementById('newFoodEan').value = '';
         toggleDrawer('addFoodDrawer');
     }
 
